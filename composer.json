@@ -3,11 +3,8 @@
 
     "type": "yii2-extension",
 
-    "version": "1.0.0-dev",
-
     "description": "Neo4j Extension",
     "keywords": ["yii2", "database", "graph"],
-    "license": "BSD-3-Clause",
     "support": {
         "issues": "https://github.com/yiisoft/yii2/issues?labels=ext%3Aneo4j",
         "forum": "http://www.yiiframework.com/forum/",
