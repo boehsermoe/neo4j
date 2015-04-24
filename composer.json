@@ -13,7 +13,7 @@
         "forum": "http://www.yiiframework.com/forum/",
         "wiki": "http://www.yiiframework.com/wiki/",
         "irc": "irc://irc.freenode.net/yii",
-        "source": "https://github.com/yiisoft/yii2"
+        "source": "https://github.com/boehsermoe/neo4j"
     },
     "authors": [
         {
@@ -21,7 +21,7 @@
             "email": "boehsermoe@me.com"
         }
     ],
-
+    "minimum-stability": "dev",
     "require": {
         "yiisoft/yii2": "*"
     },
