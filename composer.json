@@ -3,6 +3,8 @@
 
     "type": "yii2-extension",
 
+    "version": "dev",
+
     "description": "Neo4j Extension",
     "keywords": ["yii2", "database", "graph"],
     "license": "BSD-3-Clause",
@@ -20,7 +22,6 @@
         }
     ],
 
-    "minimum-stability": "dev",
     "require": {
         "yiisoft/yii2": "*"
     },
