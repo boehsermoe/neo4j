@@ -3,7 +3,7 @@
 
     "type": "yii2-extension",
 
-    "version": "dev",
+    "version": "1.0.0-dev",
 
     "description": "Neo4j Extension",
     "keywords": ["yii2", "database", "graph"],
