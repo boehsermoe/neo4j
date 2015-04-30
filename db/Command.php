@@ -2,8 +2,10 @@
 
 namespace neo4j\db;
 
+use Everyman\Neo4j\Cypher\Query;
 use Everyman\Neo4j\Exception;
 use Everyman\Neo4j\Label;
+use Everyman\Neo4j\Node;
 use Everyman\Neo4j\PropertyContainer;
 use Yii;
 use yii\base\NotSupportedException;
@@ -42,9 +44,7 @@ use yii\caching\Cache;
  *
  * To build SELECT SQL statements, please use [[QueryBuilder]] instead.
  *
- * @property string $rawSql The raw SQL with parameter values inserted into the corresponding placeholders in
- * [[sql]]. This property is read-only.
- * @property string $sql The SQL statement to be executed.
+ * @property PropertyContainer $container The SQL statement to be executed.
  *
  * @author Qiang Xue <qiang.xue@gmail.com>
  * @since 2.0
@@ -78,7 +78,7 @@ class Command extends \yii\base\Component
 
 	/**
 	 * Returns the SQL statement for this command.
-	 * @return \Everyman\Neo4j\Command the SQL statement to be executed
+	 * @return PropertyContainer the SQL statement to be executed
 	 */
 	public function getContainer()
 	{
@@ -119,13 +119,48 @@ class Command extends \yii\base\Component
 	/**
 	 * Specifies the SQL statement to be executed.
 	 * The previous SQL execution (if any) will be cancelled, and [[params]] will be cleared as well.
-	 * @param Label $label the SQL statement to be set.
+	 *
+	 * @param Label $name the SQL statement to be set.
+	 *
 	 * @return static this command instance
 	 */
-	public function setLabel($label)
+	public function setLabel($name)
 	{
-		if ($label !== $this->_label) {
-			$this->_label = $this->db->client->makeLabel($label);
+		if ($name !== $this->_label)
+		{
+			var_dump($name);
+			$this->_label = $this->db->client->makeLabel($name);
+		}
+
+		return $this;
+	}
+
+	/**
+	 * @var Query
+	 */
+	private $_query;
+
+	/**
+	 * Returns the SQL statement for this command.
+	 * @return Query the SQL statement to be executed
+	 */
+	public function getQuery()
+	{
+		return $this->_query;
+	}
+
+	/**
+	 * Specifies the SQL statement to be executed.
+	 * The previous SQL execution (if any) will be cancelled, and [[params]] will be cleared as well.
+	 * @param Query $query the SQL statement to be set.
+	 * @return static this command instance
+	 */
+	public function setQuery($query)
+	{
+		if ($query !== $this->_query) {
+			$this->cancel();
+			$this->_query = $query;
+			$this->params = [];
 		}
 
 		return $this;
@@ -265,12 +300,7 @@ class Command extends \yii\base\Component
 			Yii::beginProfile($token, __METHOD__);
 
 			$this->prepare();
-			$result = $this->_container->save();
-			
-			if ($this->label)
-			{
-				$this->_container->addLabels([$this->label]);
-			}
+			$result = $this->executeInternal();
 
 			Yii::endProfile($token, __METHOD__);
 
@@ -286,6 +316,27 @@ class Command extends \yii\base\Component
 				throw new Exception($message, $errorInfo, (int) $e->getCode(), $e);
 			}
 		}
+	}
+
+	public function executeInternal()
+	{
+		$result = false;
+
+		if ($this->_query)
+		{
+			$result = $this->_query->getResultSet();
+		}
+		elseif ($this->_container)
+		{
+			$result = $this->_container->save();
+
+			if ($this->_container instanceof Node && $this->label)
+			{
+				$this->_container->addLabels([$this->label]);
+			}
+		}
+
+		return $result;
 	}
 
 	/**
@@ -493,15 +544,23 @@ class Command extends \yii\base\Component
 	 *
 	 * Note that the created command is not executed until [[execute()]] is called.
 	 *
-	 * @param string $table the table to be updated.
-	 * @param array $columns the column data (name => value) to be updated.
-	 * @param string|array $condition the condition that will be put in the WHERE part. Please
+	 * @param string $label the label to be updated.
+	 * @param integer $id
+	 * @param array $properties the column data (name => value) to be updated.
+	 * @param array $condition the condition that will be put in the WHERE part. Please
 	 * refer to [[Query::where()]] on how to specify condition.
 	 * @param array $params the parameters to be bound to the command
 	 * @return Command the command object itself
 	 */
-	public function update($table, $columns, $condition = '', $params = [])
+	public function update($label, $properties, $id, $condition = [], $params = [])
 	{
+		$params = [];
+		$label = $this->db->client->makeLabel($label);
+		$node = $this->db->client->getNode($id);
+		$node->setProperties($properties);
+
+		return $this->setLabel($label)->setContainer($node)->bindValues($params);
+
 		$sql = $this->db->getQueryBuilder()->update($table, $columns, $condition, $params);
 
 		return $this->setSql($sql)->bindValues($params);
@@ -527,6 +586,12 @@ class Command extends \yii\base\Component
 	 */
 	public function delete($table, $condition = '', $params = [])
 	{
+		$queryString = "MATCH n DELETE n";
+		$query = new Query($this->db->client, $queryString, $params);
+
+		return $this->setQuery($query);
+
+		// Todo: QueryBuilder
 		$sql = $this->db->getQueryBuilder()->delete($table, $condition, $params);
 
 		return $this->setSql($sql)->bindValues($params);

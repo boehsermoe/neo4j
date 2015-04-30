@@ -14,11 +14,85 @@ use yii\db\BaseActiveRecord;
 class ActiveRecord extends BaseActiveRecord
 {
 	/**
+	 * Updates the whole table using the provided attribute values and conditions.
+	 * For example, to change the status to be 1 for all customers whose status is 2:
+	 *
+	 * ~~~
+	 * Customer::updateAll(['status' => 1], 'status = 2');
+	 * ~~~
+	 *
+	 * @param array $attributes attribute values (name-value pairs) to be saved into the table
+	 * @param string|array $condition the conditions that will be put in the WHERE part of the UPDATE SQL.
+	 * Please refer to [[Query::where()]] on how to specify this parameter.
+	 * @param array $params the parameters (name => value) to be bound to the query.
+	 * @return integer the number of rows updated
+	 */
+	public static function updateAll($attributes, $condition = '', $params = [])
+	{
+		$command = static::getDb()->createCommand();
+		$command->update(static::labelName(), $attributes, $condition, $params);
+
+		return $command->execute();
+	}
+
+	/**
+	 * Updates the whole table using the provided counter changes and conditions.
+	 * For example, to increment all customers' age by 1,
+	 *
+	 * ~~~
+	 * Customer::updateAllCounters(['age' => 1]);
+	 * ~~~
+	 *
+	 * @param array $counters the counters to be updated (attribute name => increment value).
+	 * Use negative values if you want to decrement the counters.
+	 * @param string|array $condition the conditions that will be put in the WHERE part of the UPDATE SQL.
+	 * Please refer to [[Query::where()]] on how to specify this parameter.
+	 * @param array $params the parameters (name => value) to be bound to the query.
+	 * Do not name the parameters as `:bp0`, `:bp1`, etc., because they are used internally by this method.
+	 * @return integer the number of rows updated
+	 */
+	public static function updateAllCounters($counters, $condition = '', $params = [])
+	{
+		$n = 0;
+		foreach ($counters as $name => $value) {
+			$counters[$name] = new yii\db\Expression("[[$name]]+:bp{$n}", [":bp{$n}" => $value]);
+			$n++;
+		}
+		$command = static::getDb()->createCommand();
+		$command->update(static::labelName(), $counters, $condition, $params);
+
+		return $command->execute();
+	}
+
+	/**
+	 * Deletes rows in the table using the provided conditions.
+	 * WARNING: If you do not specify any condition, this method will delete ALL rows in the table.
+	 *
+	 * For example, to delete all customers whose status is 3:
+	 *
+	 * ~~~
+	 * Customer::deleteAll('status = 3');
+	 * ~~~
+	 *
+	 * @param string|array $condition the conditions that will be put in the WHERE part of the DELETE SQL.
+	 * Please refer to [[Query::where()]] on how to specify this parameter.
+	 * @param array $params the parameters (name => value) to be bound to the query.
+	 * @return integer the number of rows deleted
+	 */
+	public static function deleteAll($condition = '', $params = [])
+	{
+		$command = static::getDb()->createCommand();
+		$command->delete(static::labelName(), $condition, $params);
+
+		return $command->execute();
+	}
+
+	/**
 	 * @inheritdoc
 	 */
 	public static function find()
 	{
-		return new ActiveQuery(get_called_class());
+		return new yii\db\ActiveQuery(get_called_class());
 	}
 
 	/**
@@ -40,11 +114,51 @@ class ActiveRecord extends BaseActiveRecord
 	}
 
 	/**
+	 * Returns the list of all attribute names of the model.
+	 * The default implementation will return all column names of the table associated with this AR class.
+	 * @return array list of attribute names.
+	 */
+	public function attributes()
+	{
+		return parent::attributes();
+	}
+
+	/**
+	 * Returns the named attribute value.
+	 * If this record is the result of a query and the attribute is not loaded,
+	 * null will be returned.
+	 * @param string $name the attribute name
+	 * @return mixed the attribute value. Null if the attribute is not set or does not exist.
+	 * @see hasAttribute()
+	 */
+	public function getAttribute($name)
+	{
+		return $this->$name;
+	}
+
+	/**
+	 * Sets the named attribute value.
+	 * @param string $name the attribute name
+	 * @param mixed $value the attribute value.
+	 * @throws yii\base\InvalidParamException if the named attribute does not exist.
+	 * @see hasAttribute()
+	 */
+	public function setAttribute($name, $value)
+	{
+		if ($this->hasAttribute($name)) {
+			$this->$name = $value;
+		} else {
+			throw new yii\base\InvalidParamException(get_class($this) . ' has no attribute named "' . $name . '".');
+		}
+	}
+
+
+	/**
 	 * @return string the label name
 	 */
 	public static function labelName()
 	{
-		return get_called_class();
+		return yii\helpers\StringHelper::basename(get_called_class());
 	}
 
 	/**
@@ -173,11 +287,18 @@ class ActiveRecord extends BaseActiveRecord
 				$values[$key] = $value;
 			}
 		}
+
 		$db = static::getDb();
-		
 		$command = $db->createCommand()->insert($this->labelName(), $values);
 		if (!$command->execute()) {
 			return false;
+		}
+
+		foreach ($this->getPrimaryKey(true) as $name => $value) {
+			$id = $name == 'id' ? $command->container->getId() : $command->container->getProperty($name);
+			$this->setAttribute($name, $id);
+
+			$values[$name] = $id;
 		}
 
 		$this->afterSave(true);
@@ -261,6 +382,36 @@ class ActiveRecord extends BaseActiveRecord
 		}
 
 		return $result;
+	}
+
+	/**
+	 * @see update()
+	 * @throws yii\db\StaleObjectException
+	 */
+	protected function updateInternal($attributes = null)
+	{
+		if (!$this->beforeSave(false)) {
+			return false;
+		}
+		$values = $this->getAttributes($attributes);
+		if (empty($values)) {
+			$this->afterSave(false);
+			return 0;
+		}
+
+		$id = $this->getOldPrimaryKey();
+
+		$command = static::getDb()->createCommand();
+		$command->update(static::labelName(), $values, $id);
+
+		if (!$command->execute()) {
+			return false;
+		}
+
+		$this->afterSave(false);
+		$this->setOldAttributes($values);
+
+		return true;
 	}
 
 	/**
