@@ -1,6 +1,7 @@
 <?php
 
 namespace neo4j\db;
+use Everyman\Neo4j\Query\Row;
 use yii\db\ActiveQueryInterface;
 use yii\db\ActiveQueryTrait;
 use yii\db\ActiveRelationTrait;
@@ -75,7 +76,7 @@ class ActiveQuery extends Query implements ActiveQueryInterface
 	 * @var string the SQL statement to be executed for retrieving AR records.
 	 * This is set by [[ActiveRecord::findBySql()]].
 	 */
-	public $sql;
+	public $node;
 	/**
 	 * @var string|array the join condition to be used when this query is used in a relational context.
 	 * The condition will be used in the ON part when [[ActiveQuery::joinWith()]] is called.
@@ -125,7 +126,7 @@ class ActiveQuery extends Query implements ActiveQueryInterface
 		if (empty($this->from)) {
 			/** @var ActiveRecord $modelClass */
 			$modelClass = $this->modelClass;
-			$tableName = $modelClass::tableName();
+			$tableName = $modelClass::labelName();
 			$this->from = [$tableName];
 		}
 
@@ -216,7 +217,7 @@ class ActiveQuery extends Query implements ActiveQueryInterface
 	 * Executes query and returns a single row of result.
 	 * @param Connection $db the DB connection used to create the DB command.
 	 * If null, the DB connection returned by [[modelClass]] will be used.
-	 * @return ActiveRecord|array|null a single row of query result. Depending on the setting of [[asArray]],
+	 * @return ActiveRecord|array|null|static a single row of query result. Depending on the setting of [[asArray]],
 	 * the query result may be either an array or an ActiveRecord object. Null will be returned
 	 * if the query results in nothing.
 	 */
@@ -288,14 +289,14 @@ class ActiveQuery extends Query implements ActiveQueryInterface
 			$db = $modelClass::getDb();
 		}
 
-		if ($this->sql === null) {
-			list ($sql, $params) = $db->getQueryBuilder()->build($this);
+		if ($this->node === null) {
+			list ($query, $params) = $db->getQueryBuilder()->build($this);
 		} else {
-			$sql = $this->sql;
+			$node = $this->node;
 			$params = $this->params;
 		}
 
-		return $db->createCommand($sql, $params);
+		return $db->createCommand($node, $query, $params);
 	}
 
 	/**

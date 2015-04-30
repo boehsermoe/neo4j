@@ -8,13 +8,15 @@
 
 namespace neo4j\db;
 
+use Everyman\Neo4j\Cache;
 use Everyman\Neo4j\Client;
 use Everyman\Neo4j\Exception;
+use Everyman\Neo4j\Node;
+use Everyman\Neo4j\Query;
 use Everyman\Neo4j\Transaction;
 use Everyman\Neo4j\Transport\Curl;
 use Everyman\Neo4j\Transport\Stream;
 use Everyman\Neo4j\Transport;
-use neo4j\db\cypher\QueryBuilder;
 use yii\base\Component;
 use yii;
 
@@ -120,6 +122,40 @@ class Connection extends Component
 	protected $_client = null;
 
 	/**
+	 * @var boolean whether to enable query caching.
+	 * Note that in order to enable query caching, a valid cache component as specified
+	 * by [[queryCache]] must be enabled and [[enableQueryCache]] must be set true.
+	 *
+	 * Methods [[beginCache()]] and [[endCache()]] can be used as shortcuts to turn on
+	 * and off query caching on the fly.
+	 * @see queryCacheDuration
+	 * @see queryCache
+	 * @see queryCacheDependency
+	 * @see beginCache()
+	 * @see endCache()
+	 */
+	public $enableQueryCache = false;
+	/**
+	 * @var integer number of seconds that query results can remain valid in cache.
+	 * Defaults to 3600, meaning 3600 seconds, or one hour.
+	 * Use 0 to indicate that the cached data will never expire.
+	 * @see enableQueryCache
+	 */
+	public $queryCacheDuration = 3600;
+	/**
+	 * @var \yii\caching\Dependency the dependency that will be used when saving query results into cache.
+	 * Defaults to null, meaning no dependency.
+	 * @see enableQueryCache
+	 */
+	public $queryCacheDependency;
+	/**
+	 * @var Cache|string the cache object or the ID of the cache application component
+	 * that is used for query caching.
+	 * @see enableQueryCache
+	 */
+	public $queryCache = 'cache';
+
+	/**
 	 * Returns a value indicating whether the DB connection is established.
 	 * @return boolean whether the DB connection is established
 	 */
@@ -205,15 +241,17 @@ class Connection extends Component
 
 	/**
 	 * Creates a command for execution.
-	 * @param string $sql the SQL statement to be executed
+	 * @param Node $container the Container to be find
+	 * @param string|Query $query the Query statement to be executed
 	 * @param array $params the parameters to be bound to the SQL statement
 	 * @return Command the DB command
 	 */
-	public function createCommand($container = null, $params = [])
+	public function createCommand($container = null, $query = null, $params = [])
 	{
 		$this->open();
 		$command = new Command([
 			'db' => $this,
+			'query' => $query,
 			'container' => $container,
 		]);
 
@@ -270,5 +308,43 @@ class Connection extends Component
 		}
 
 		return $this->_transaction;
+	}
+
+	/**
+	 * Quotes a string value for use in a query.
+	 * Note that if the parameter is not a string, it will be returned without change.
+	 * @param string $str string to be quoted
+	 * @return string the properly quoted string
+	 * @see http://www.php.net/manual/en/function.PDO-quote.php
+	 */
+	public function quoteValue($str)
+	{
+		return $str;
+	}
+
+	/**
+	 * Quotes a table name for use in a query.
+	 * If the table name contains schema prefix, the prefix will also be properly quoted.
+	 * If the table name is already quoted or contains special characters including '(', '[[' and '{{',
+	 * then this method will do nothing.
+	 * @param string $name table name
+	 * @return string the properly quoted table name
+	 */
+	public function quoteTableName($name)
+	{
+		return $name;
+	}
+
+	/**
+	 * Quotes a column name for use in a query.
+	 * If the column name contains prefix, the prefix will also be properly quoted.
+	 * If the column name is already quoted or contains special characters including '(', '[[' and '{{',
+	 * then this method will do nothing.
+	 * @param string $name column name
+	 * @return string the properly quoted column name
+	 */
+	public function quoteColumnName($name)
+	{
+		return $name;
 	}
 }

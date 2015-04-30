@@ -7,6 +7,8 @@ use Everyman\Neo4j\Exception;
 use Everyman\Neo4j\Label;
 use Everyman\Neo4j\Node;
 use Everyman\Neo4j\PropertyContainer;
+use Everyman\Neo4j\Query\ResultSet;
+use Everyman\Neo4j\Query\Row;
 use Yii;
 use yii\base\NotSupportedException;
 use yii\caching\Cache;
@@ -55,15 +57,7 @@ class Command extends \yii\base\Component
 	 * @var Connection the DB connection that this command is associated with
 	 */
 	public $db;
-	/**
-	 * @var \PDOStatement the PDOStatement object that this command is associated with
-	 */
-	public $pdoStatement;
-	/**
-	 * @var integer the default fetch mode for this command.
-	 * @see http://www.php.net/manual/en/function.PDOStatement-setFetchMode.php
-	 */
-	public $fetchMode = \PDO::FETCH_ASSOC;
+
 	/**
 	 * @var array the parameters (name => value) that are bound to the current PDO statement.
 	 * This property is maintained by methods such as [[bindValue()]].
@@ -128,7 +122,6 @@ class Command extends \yii\base\Component
 	{
 		if ($name !== $this->_label)
 		{
-			var_dump($name);
 			$this->_label = $this->db->client->makeLabel($name);
 		}
 
@@ -136,13 +129,13 @@ class Command extends \yii\base\Component
 	}
 
 	/**
-	 * @var Query
+	 * @var string
 	 */
 	private $_query;
 
 	/**
 	 * Returns the SQL statement for this command.
-	 * @return Query the SQL statement to be executed
+	 * @return string the SQL statement to be executed
 	 */
 	public function getQuery()
 	{
@@ -152,7 +145,7 @@ class Command extends \yii\base\Component
 	/**
 	 * Specifies the SQL statement to be executed.
 	 * The previous SQL execution (if any) will be cancelled, and [[params]] will be cleared as well.
-	 * @param Query $query the SQL statement to be set.
+	 * @param string $query the SQL statement to be set.
 	 * @return static this command instance
 	 */
 	public function setQuery($query)
@@ -164,6 +157,40 @@ class Command extends \yii\base\Component
 		}
 
 		return $this;
+	}
+
+	/**
+	 * Returns the raw Cypher Query by inserting parameter values into the corresponding placeholders in [[sql]].
+	 * Note that the return value of this method should mainly be used for logging purpose.
+	 * It is likely that this method returns an invalid SQL due to improper replacement of parameter placeholders.
+	 * @return string the raw SQL with parameter values inserted into the corresponding placeholders in [[sql]].
+	 */
+	public function getRawQuery()
+	{
+		if (empty($this->params)) {
+			return $this->_query;
+		} else {
+			$params = [];
+			foreach ($this->params as $name => $value) {
+				if (is_string($value)) {
+					$params[$name] = $value;
+				} elseif ($value === null) {
+					$params[$name] = 'NULL';
+				} else {
+					$params[$name] = $value;
+				}
+			}
+			if (isset($params[1])) {
+				$query = '';
+				foreach (explode('?', $this->_query) as $i => $part) {
+					$query .= (isset($params[$i]) ? $params[$i] : '') . $part;
+				}
+
+				return $query;
+			} else {
+				return strtr($this->_query, $params);
+			}
+		}
 	}
 
 	/**
@@ -195,7 +222,7 @@ class Command extends \yii\base\Component
 	 */
 	public function cancel()
 	{
-		$this->pdoStatement = null;
+		$this->_query = null;
 	}
 
 	/**
@@ -324,7 +351,8 @@ class Command extends \yii\base\Component
 
 		if ($this->_query)
 		{
-			$result = $this->_query->getResultSet();
+			$query = new Query($this->db->client, $this->_query, $this->params);
+			$result = $query->getResultSet();
 		}
 		elseif ($this->_container)
 		{
@@ -342,7 +370,7 @@ class Command extends \yii\base\Component
 	/**
 	 * Executes the SQL statement and returns query result.
 	 * This method is for executing a SQL query that returns result set, such as `SELECT`.
-	 * @return DataReader the reader object for fetching the query result
+	 * @return ResultSet the reader object for fetching the query result
 	 * @throws Exception execution failed
 	 */
 	public function query()
@@ -354,13 +382,15 @@ class Command extends \yii\base\Component
 	 * Executes the SQL statement and returns ALL rows at once.
 	 * @param integer $fetchMode the result fetch mode. Please refer to [PHP manual](http://www.php.net/manual/en/function.PDOStatement-setFetchMode.php)
 	 * for valid fetch modes. If this parameter is null, the value set in [[fetchMode]] will be used.
-	 * @return array all rows of the query result. Each array element is an array representing a row of data.
+	 * @return ResultSet all rows of the query result. Each array element is an array representing a row of data.
 	 * An empty array is returned if the query results in nothing.
 	 * @throws Exception execution failed
 	 */
 	public function queryAll($fetchMode = null)
 	{
-		return $this->queryInternal('fetchAll', $fetchMode);
+		$resultSet = $this->queryInternal('fetchAll', $fetchMode);
+
+		return $resultSet->count() > 0 ? $resultSet : false;
 	}
 
 	/**
@@ -368,13 +398,13 @@ class Command extends \yii\base\Component
 	 * This method is best used when only the first row of result is needed for a query.
 	 * @param integer $fetchMode the result fetch mode. Please refer to [PHP manual](http://www.php.net/manual/en/function.PDOStatement-setFetchMode.php)
 	 * for valid fetch modes. If this parameter is null, the value set in [[fetchMode]] will be used.
-	 * @return array|boolean the first row (in terms of an array) of the query result. False is returned if the query
+	 * @return Row|boolean the first row (in terms of an array) of the query result. False is returned if the query
 	 * results in nothing.
 	 * @throws Exception execution failed
 	 */
 	public function queryOne($fetchMode = null)
 	{
-		return $this->queryInternal('fetch', $fetchMode);
+		return $this->queryInternal('fetch', $fetchMode)->current()->current() ? : false;
 	}
 
 	/**
@@ -398,7 +428,7 @@ class Command extends \yii\base\Component
 	 * Executes the SQL statement and returns the first column of the result.
 	 * This method is best used when only the first column of result (i.e. the first element in each row)
 	 * is needed for a query.
-	 * @return array the first column of the query result. Empty array is returned if the query results in nothing.
+	 * @return ResultSet the first column of the query result. Empty array is returned if the query results in nothing.
 	 * @throws Exception execution failed
 	 */
 	public function queryColumn()
@@ -411,15 +441,15 @@ class Command extends \yii\base\Component
 	 * @param string $method method of PDOStatement to be called
 	 * @param integer $fetchMode the result fetch mode. Please refer to [PHP manual](http://www.php.net/manual/en/function.PDOStatement-setFetchMode.php)
 	 * for valid fetch modes. If this parameter is null, the value set in [[fetchMode]] will be used.
-	 * @return mixed the method execution result
+	 * @return mixed|ResultSet the method execution result
 	 * @throws Exception if the query causes any problem
 	 */
 	private function queryInternal($method, $fetchMode = null)
 	{
 		$db = $this->db;
-		$rawSql = $this->getRawSql();
+		$rawSql = $this->getRawQuery();
 
-		Yii::info($rawSql, 'yii\db\Command::query');
+		Yii::info($rawSql, __METHOD__);
 
 		/** @var \yii\caching\Cache $cache */
 		if ($db->enableQueryCache && $method !== '') {
@@ -443,22 +473,12 @@ class Command extends \yii\base\Component
 
 		$token = $rawSql;
 		try {
-			Yii::beginProfile($token, 'yii\db\Command::query');
+			Yii::beginProfile($token, __METHOD__);
 
 			$this->prepare();
-			$this->pdoStatement->execute();
+			$result = $this->executeInternal();
 
-			if ($method === '') {
-				$result = new DataReader($this);
-			} else {
-				if ($fetchMode === null) {
-					$fetchMode = $this->fetchMode;
-				}
-				$result = call_user_func_array([$this->pdoStatement, $method], (array) $fetchMode);
-				$this->pdoStatement->closeCursor();
-			}
-
-			Yii::endProfile($token, 'yii\db\Command::query');
+			Yii::endProfile($token, __METHOD__);
 
 			if (isset($cache, $cacheKey) && $cache instanceof Cache) {
 				$cache->set($cacheKey, $result, $db->queryCacheDuration, $db->queryCacheDependency);
@@ -555,7 +575,6 @@ class Command extends \yii\base\Component
 	public function update($label, $properties, $id, $condition = [], $params = [])
 	{
 		$params = [];
-		$label = $this->db->client->makeLabel($label);
 		$node = $this->db->client->getNode($id);
 		$node->setProperties($properties);
 
@@ -578,16 +597,15 @@ class Command extends \yii\base\Component
 	 *
 	 * Note that the created command is not executed until [[execute()]] is called.
 	 *
-	 * @param string $table the table where the data will be deleted from.
+	 * @param string $label the table where the data will be deleted from.
 	 * @param string|array $condition the condition that will be put in the WHERE part. Please
 	 * refer to [[Query::where()]] on how to specify condition.
 	 * @param array $params the parameters to be bound to the command
 	 * @return Command the command object itself
 	 */
-	public function delete($table, $condition = '', $params = [])
+	public function delete($label, $condition = '', $params = [])
 	{
-		$queryString = "MATCH n DELETE n";
-		$query = new Query($this->db->client, $queryString, $params);
+		$query = $this->db->getQueryBuilder()->delete($label, $condition, $params);
 
 		return $this->setQuery($query);
 

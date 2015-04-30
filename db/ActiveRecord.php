@@ -8,6 +8,7 @@
 
 namespace neo4j\db;
 
+use Everyman\Neo4j\Node;
 use yii;
 use yii\db\BaseActiveRecord;
 
@@ -92,7 +93,7 @@ class ActiveRecord extends BaseActiveRecord
 	 */
 	public static function find()
 	{
-		return new yii\db\ActiveQuery(get_called_class());
+		return new ActiveQuery(get_called_class());
 	}
 
 	/**
@@ -202,6 +203,31 @@ class ActiveRecord extends BaseActiveRecord
 	public function transactions()
 	{
 		return [];
+	}
+
+	/**
+	 * @inheritdoc
+	 * @param array|Node            $row
+	 */
+	public static function populateRecord($record, $row)
+	{
+		$data = [];
+
+		$columns = $record->attributes();
+		foreach ($row->getProperties() as $name => $value)
+		{
+			if (in_array($name, $columns))
+			{
+				$data[$name] = $record->$name = $value;
+			}
+		}
+
+		if ($record->hasAttribute('id'))
+		{
+			$record->id = $row->getId();
+		}
+
+		parent::populateRecord($record, $data);
 	}
 
 	/**
@@ -399,10 +425,8 @@ class ActiveRecord extends BaseActiveRecord
 			return 0;
 		}
 
-		$id = $this->getOldPrimaryKey();
-
 		$command = static::getDb()->createCommand();
-		$command->update(static::labelName(), $values, $id);
+		$command->update(static::labelName(), $values, $this->id);
 
 		if (!$command->execute()) {
 			return false;
