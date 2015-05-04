@@ -8,7 +8,11 @@
 
 namespace neo4j\db;
 
+use Everyman\Neo4j\Exception;
 use Everyman\Neo4j\Node;
+use Everyman\Neo4j\PropertyContainer;
+use Everyman\Neo4j\Query\ResultSet;
+use Everyman\Neo4j\Query\Row;
 use yii;
 use yii\db\BaseActiveRecord;
 
@@ -79,13 +83,23 @@ class ActiveRecord extends BaseActiveRecord
 	 * Please refer to [[Query::where()]] on how to specify this parameter.
 	 * @param array $params the parameters (name => value) to be bound to the query.
 	 * @return integer the number of rows deleted
+	 *
+	 * @throws \Everyman\Neo4j\Exception
 	 */
 	public static function deleteAll($condition = '', $params = [])
 	{
 		$command = static::getDb()->createCommand();
 		$command->delete(static::labelName(), $condition, $params);
 
-		return $command->execute();
+		try
+		{
+			$command->execute();
+			return true;
+		}
+		catch (\Everyman\Neo4j\Exception $ex)
+		{
+			throw $ex;
+		}
 	}
 
 	/**
@@ -207,24 +221,20 @@ class ActiveRecord extends BaseActiveRecord
 
 	/**
 	 * @inheritdoc
-	 * @param array|Node            $row
+	 * @param array            $row
 	 */
 	public static function populateRecord($record, $row)
 	{
 		$data = [];
 
 		$columns = $record->attributes();
-		foreach ($row->getProperties() as $name => $value)
+
+		foreach ($row as $name => $value)
 		{
 			if (in_array($name, $columns))
 			{
 				$data[$name] = $record->$name = $value;
 			}
-		}
-
-		if ($record->hasAttribute('id'))
-		{
-			$record->id = $row->getId();
 		}
 
 		parent::populateRecord($record, $data);

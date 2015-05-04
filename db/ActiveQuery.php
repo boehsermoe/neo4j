@@ -1,6 +1,7 @@
 <?php
 
 namespace neo4j\db;
+use Everyman\Neo4j\PropertyContainer;
 use Everyman\Neo4j\Query\Row;
 use yii\db\ActiveQueryInterface;
 use yii\db\ActiveQueryTrait;
@@ -226,13 +227,16 @@ class ActiveQuery extends Query implements ActiveQueryInterface
 		$command = $this->createCommand($db);
 		$row = $command->queryOne();
 		if ($row !== false) {
+			/** @var $node PropertyContainer */
+			$node = $row->current();
+
 			if ($this->asArray) {
-				$model = $row;
+				$model = $node->getProperties();
 			} else {
 				/** @var ActiveRecord $class */
 				$class = $this->modelClass;
-				$model = $class::instantiate($row);
-				$class::populateRecord($model, $row);
+				$model = $class::instantiate($node->getProperties());
+				$class::populateRecord($model, $node);
 			}
 			if (!empty($this->with)) {
 				$models = [$model];

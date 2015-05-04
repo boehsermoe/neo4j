@@ -9,6 +9,7 @@ use Everyman\Neo4j\Node;
 use Everyman\Neo4j\PropertyContainer;
 use Everyman\Neo4j\Query\ResultSet;
 use Everyman\Neo4j\Query\Row;
+use neo4j\neo4jphp\Command\ExecuteCypherQuery;
 use Yii;
 use yii\base\NotSupportedException;
 use yii\caching\Cache;
@@ -271,9 +272,9 @@ class Command extends \yii\base\Component
 	{
 		$this->prepare();
 		if ($dataType === null) {
-			$dataType = $this->db->getSchema()->getPdoType($value);
+			#$dataType = $this->db->getSchema()->getPdoType($value);
 		}
-		$this->pdoStatement->bindValue($name, $value, $dataType);
+		#$this->pdoStatement->bindValue($name, $value, $dataType);
 		$this->params[$name] = $value;
 
 		return $this;
@@ -292,18 +293,17 @@ class Command extends \yii\base\Component
 	 */
 	public function bindValues($values)
 	{
-		return $this;
 		if (!empty($values)) {
 			$this->prepare();
 			foreach ($values as $name => $value) {
 				if (is_array($value)) {
 					$type = $value[1];
 					$value = $value[0];
-				} else {
-					$type = $this->db->getSchema()->getPdoType($value);
 				}
-				$this->pdoStatement->bindValue($name, $value, $type);
-				$this->params[$name] = $value;
+				else {
+					$type = null;
+				}
+				$this->bindValue($name, $value, $type);
 			}
 		}
 
@@ -314,7 +314,7 @@ class Command extends \yii\base\Component
 	 * Executes the SQL statement.
 	 * This method should only be used for executing non-query SQL statement, such as `INSERT`, `DELETE`, `UPDATE` SQLs.
 	 * No result set will be returned.
-	 * @return integer number of rows affected by the execution.
+	 * @return array number of rows affected by the execution.
 	 * @throws Exception execution failed
 	 */
 	public function execute()
@@ -351,8 +351,7 @@ class Command extends \yii\base\Component
 
 		if ($this->_query)
 		{
-			$query = new Query($this->db->client, $this->_query, $this->params);
-			$result = $query->getResultSet();
+			$result = $this->executeCypherQuery();
 		}
 		elseif ($this->_container)
 		{
@@ -365,6 +364,18 @@ class Command extends \yii\base\Component
 		}
 
 		return $result;
+	}
+
+	/**
+	 * @return array
+	 * @author bk
+	 */
+	public function executeCypherQuery()
+	{
+		$query = new Query($this->db->client, $this->_query, $this->params);
+		$command = new ExecuteCypherQuery($this->db->client, $query);
+
+		return $command->execute();
 	}
 
 	/**
@@ -382,15 +393,15 @@ class Command extends \yii\base\Component
 	 * Executes the SQL statement and returns ALL rows at once.
 	 * @param integer $fetchMode the result fetch mode. Please refer to [PHP manual](http://www.php.net/manual/en/function.PDOStatement-setFetchMode.php)
 	 * for valid fetch modes. If this parameter is null, the value set in [[fetchMode]] will be used.
-	 * @return ResultSet all rows of the query result. Each array element is an array representing a row of data.
+	 * @return array|PropertyContainer all rows of the query result. Each array element is an array representing a row of data.
 	 * An empty array is returned if the query results in nothing.
 	 * @throws Exception execution failed
 	 */
 	public function queryAll($fetchMode = null)
 	{
-		$resultSet = $this->queryInternal('fetchAll', $fetchMode);
+		$result = $this->queryInternal('fetchAll', $fetchMode);
 
-		return $resultSet->count() > 0 ? $resultSet : false;
+		return count($result) > 0 ? $result : false;
 	}
 
 	/**
@@ -404,7 +415,9 @@ class Command extends \yii\base\Component
 	 */
 	public function queryOne($fetchMode = null)
 	{
-		return $this->queryInternal('fetch', $fetchMode)->current()->current() ? : false;
+		$result = $this->queryInternal('fetch', $fetchMode);
+
+		return count($result) > 0 ? reset($result) : false;
 	}
 
 	/**
@@ -441,7 +454,7 @@ class Command extends \yii\base\Component
 	 * @param string $method method of PDOStatement to be called
 	 * @param integer $fetchMode the result fetch mode. Please refer to [PHP manual](http://www.php.net/manual/en/function.PDOStatement-setFetchMode.php)
 	 * for valid fetch modes. If this parameter is null, the value set in [[fetchMode]] will be used.
-	 * @return mixed|ResultSet the method execution result
+	 * @return mixed|array the method execution result
 	 * @throws Exception if the query causes any problem
 	 */
 	private function queryInternal($method, $fetchMode = null)

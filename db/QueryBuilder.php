@@ -178,14 +178,74 @@ class QueryBuilder extends \yii\db\QueryBuilder
 			$this->buildLimit($query->limit, $query->offset),
 		];
 
-		$sql = implode($this->separator, array_filter($clauses));
+		$queryString = implode($this->separator, array_filter($clauses));
 
 		$union = $this->buildUnion($query->union, $params);
 		if ($union !== '') {
-			$sql = "($sql){$this->separator}$union";
+			$queryString = "($queryString){$this->separator}$union";
 		}
 
-		return [$sql, $params];
+		$params = $this->postpareParams($params, $queryString);
+
+		return [$queryString, $params];
+	}
+
+	private function postpareParams($params, &$queryString)
+	{
+		$vars = [];
+		foreach ($params as $name => $value)
+		{
+			$var = substr($name, 1);
+			$queryString = str_replace($name, '{'.$var.'}', $queryString);
+
+			$vars[$var] = $value;
+		}
+
+		return $vars;
+	}
+
+	public function buildHashCondition($condition, &$params)
+	{
+		$parts = [];
+		foreach ($condition as $column => $value)
+		{
+			if (is_array($value))
+			{ // IN condition
+				$parts[] = $this->buildInCondition('IN', [$column, $value], $params);
+			}
+			else
+			{
+				if (strpos($column, '(') === false)
+				{
+					$column = $this->db->quoteColumnName($column);
+				}
+				if ($this->identifier)
+				{
+					$column = $this->identifier .'.'. $column;
+				}
+
+				if ($value === null)
+				{
+					$parts[] = "$column IS NULL";
+				}
+				elseif ($value instanceof Expression)
+				{
+					$parts[] = "$column=" . $value->expression;
+					foreach ($value->params as $n => $v)
+					{
+						$params[$n] = $v;
+					}
+				}
+				else
+				{
+					$phName = self::PARAM_PREFIX . count($params);
+					$parts[] = "$column=$phName";
+					$params[$phName] = $value;
+				}
+			}
+		}
+
+		return count($parts) === 1 ? $parts[0] : '(' . implode(') AND (', $parts) . ')';
 	}
 
 	public function buildMatch($selectOption = null)
@@ -387,7 +447,7 @@ class QueryBuilder extends \yii\db\QueryBuilder
 			$this->buildFrom($label, $params),
 			$this->buildProperties($condition, $params),
 			')',
-			$this->buildDelete($condition, $params),
+			$this->buildDelete(),
 			$this->buildWhere($condition, $params),
 		];
 
@@ -396,7 +456,7 @@ class QueryBuilder extends \yii\db\QueryBuilder
 		return $sql;
 	}
 
-	public function buildDelete($columns)
+	public function buildDelete()
 	{
 		return 'DELETE ' . $this->identifier;
 	}
