@@ -14,6 +14,9 @@ use Everyman\Neo4j\PropertyContainer;
 use Everyman\Neo4j\Query\ResultSet;
 use Everyman\Neo4j\Query\Row;
 use yii;
+use yii\db\ActiveQuery;
+use yii\db\ActiveQueryInterface;
+use yii\db\ActiveRecordInterface;
 use yii\db\BaseActiveRecord;
 
 class ActiveRecord extends BaseActiveRecord
@@ -126,6 +129,56 @@ class ActiveRecord extends BaseActiveRecord
 	public static function primaryKey()
 	{
 		return ['id'];
+	}
+
+	/**
+	 * @inheritdoc
+	 *
+	 * @return ActiveQuery
+	 */
+	public function hasMany($class, $link, $direction)
+	{
+		/** @var ActiveQuery $query */
+		$query = parent::hasMany($class, $link);
+		$query->direction = $direction;
+
+		return $query;
+	}
+
+	public function hasOne($class, $link, $direction)
+	{
+		/** @var ActiveQuery $query */
+		$query = parent::hasOne($class, $link);
+		$query->direction = $direction;
+
+		return $query;
+	}
+
+	/**
+	 * Returns the primary key value(s).
+	 * @param boolean $asArray whether to return the primary key value as an array. If true,
+	 * the return value will be an array with column names as keys and column values as values.
+	 * Note that for composite primary keys, an array will always be returned regardless of this parameter value.
+	 * @property mixed The primary key value. An array (column name => column value) is returned if
+	 * the primary key is composite. A string is returned otherwise (null will be returned if
+	 * the key value is null).
+	 * @return mixed the primary key value. An array (column name => column value) is returned if the primary key
+	 * is composite or `$asArray` is true. A string is returned otherwise (null will be returned if
+	 * the key value is null).
+	 */
+	public function getPrimaryKey($asArray = false)
+	{
+		$keys = $this->primaryKey();
+		if (count($keys) === 1 && !$asArray) {
+			return $this->{$keys[0]};
+		} else {
+			$values = [];
+			foreach ($keys as $name) {
+				$values[$name] = $this->{$name};
+			}
+
+			return $values;
+		}
 	}
 
 	/**
@@ -545,5 +598,164 @@ class ActiveRecord extends BaseActiveRecord
 		$transactions = $this->transactions();
 
 		return isset($transactions[$scenario]) && ($transactions[$scenario] & $operation);
+	}
+
+	public function loadNode()
+	{
+		return $this->getDb()->client->getNode($this->getPrimaryKey());
+	}
+
+	const LINK_LEFT_RIGHT = 0;
+	const LINK_RIGHT_LEFT = 1;
+	const LINK_TWO_WAY = 2;
+
+	/**
+	 * Establishes the relationship between two models.
+	 *
+	 * The relationship is established by setting the foreign key value(s) in one model
+	 * to be the corresponding primary key value(s) in the other model.
+	 * The model with the foreign key will be saved into database without performing validation.
+	 *
+	 * If the relationship involves a pivot table, a new row will be inserted into the
+	 * pivot table which contains the primary key values from both models.
+	 *
+	 * Note that this method requires that the primary key value is not null.
+	 *
+	 * @param string $name the case sensitive name of the relationship
+	 * @param ActiveRecord $model the model to be linked with the current one.
+	 * @param array $extraColumns additional column values to be saved into the pivot table.
+	 * This parameter is only meaningful for a relationship involving a pivot table
+	 * (i.e., a relation set with [[ActiveRelationTrait::via()]] or `[[ActiveQuery::viaTable()]]`.)
+	 * @throws yii\base\InvalidCallException if the method is unable to link two models.
+	 */
+	public function link($name, $model, $extraColumns = [])
+	{
+		/** @var ActiveQuery $relation */
+		$relation = $this->getRelation($name);
+
+		if (!$relation->direction)
+		{
+			throw new yii\base\InvalidCallException('Unable to link models: only directed relationships are supported.');
+		}
+		elseif ($this->getIsNewRecord() || $model->getIsNewRecord()) {
+			throw new yii\base\InvalidCallException('Unable to link models: one or both models are newly created.');
+		}
+
+		if ($relation->via !== null) {
+			if (is_array($relation->via)) {
+				/** @var ActiveQuery $viaRelation */
+				list($viaName, $viaRelation) = $relation->via;
+				$viaClass = $viaRelation->modelClass;
+				// unset $viaName so that it can be reloaded to reflect the change
+				unset($this[$viaName]);
+			} else {
+				$viaRelation = $relation->via;
+				$viaTable = reset($relation->via->from);
+			}
+
+			if (!$viaRelation->direction)
+			{
+				throw new yii\base\InvalidCallException('Unable to link models: only directed relationships are supported.');
+			}
+
+			if (is_array($relation->via)) {
+				/** @var $viaClass ActiveRecord */
+				/** @var $record ActiveRecord */
+				$record = new $viaClass();
+				foreach ($extraColumns as $column => $value) {
+					$record->$column = $value;
+				}
+				$record->insert(false);
+
+				$viaNode = $record->loadNode();
+			} else {
+				/** @var $viaTable string */
+				$viaNode = static::getDb()->createCommand()->insert($viaTable, $extraColumns)->execute();
+			}
+
+			$node = $this->loadNode();
+			if ($viaRelation->direction == ActiveQuery::DIRECTION_IN)
+			{
+				$node->relateTo($viaNode, $viaRelation->link);
+			}
+			elseif ($viaRelation->direction == ActiveQuery::DIRECTION_OUT)
+			{
+				$node->relateTo($viaNode, $viaRelation->link);
+			}
+			else
+			{
+				throw new yii\base\InvalidCallException('Unable to link models: the link does not involve any direction.');
+			}
+		}
+		else {
+			if ($relation->direction == ActiveQuery::DIRECTION_IN)
+			{
+				$this->bindModels($relation->link, $this, $model);
+			}
+			elseif ($relation->direction == ActiveQuery::DIRECTION_OUT)
+			{
+				$this->bindModels($relation->link, $model, $this);
+			}
+			else
+			{
+				throw new yii\base\InvalidCallException('Unable to link models: the link does not involve any direction.');
+			}
+		}
+
+		// update lazily loaded related objects
+		if (!$relation->multiple) {
+			$related = $model;
+		}
+		elseif ($this->isRelationPopulated($name)) {
+			if ($relation->indexBy !== null) {
+				$indexBy = $relation->indexBy;
+				$related[$model->$indexBy] = $model;
+			} else {
+				$related[] = $model;
+			}
+		}
+
+		if ($related)
+		{
+			$this->populateRelation($name, $related);
+		}
+	}
+
+	/**
+	 * @param array $link
+	 * @param ActiveRecord $foreignModel
+	 * @param ActiveRecord $primaryModel
+	 * @throws yii\base\InvalidCallException
+	 */
+	private function bindModels($link, $foreignModel, $primaryModel)
+	{
+		if (is_array($link))
+		{
+			$link = implode(':', $link);
+		}
+
+		$primaryModel = $primaryModel->loadNode();
+		$foreignModel = $foreignModel->loadNode();
+
+		if ($primaryModel === null)
+		{
+			throw new yii\base\InvalidCallException('Unable to link models: the node of ' . get_class($primaryModel) . ' was not found.');
+		}
+		elseif ($foreignModel === null)
+		{
+			throw new yii\base\InvalidCallException('Unable to link models: the node of ' . get_class($foreignModel) . ' was not found.');
+		}
+
+		$relation = $this->getDb()->client->getNodeRelationships($this->loadNode(), $link);
+
+		if (!$relation)
+		{
+			$relation = $this->getDb()->client->makeRelationship();
+			$relation->setType($link);
+			$relation->setStartNode($primaryModel);
+			$relation->setEndNode($foreignModel);
+		}
+
+		$relation->save();
 	}
 }

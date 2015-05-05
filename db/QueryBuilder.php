@@ -47,6 +47,8 @@ class QueryBuilder extends \yii\db\QueryBuilder
 	];
 
 	public $identifier = 'n';
+	public $relationIdentifier = 'r';
+	public $foreignIdentifier = null;
 
 	/**
 	 * Builds a SQL statement for renaming a column.
@@ -447,17 +449,27 @@ class QueryBuilder extends \yii\db\QueryBuilder
 			$this->buildFrom($label, $params),
 			$this->buildProperties($condition, $params),
 			')',
+			$this->buildDirectedRelations(),
 			$this->buildDelete(),
 			$this->buildWhere($condition, $params),
 		];
 
-		$sql = implode($this->separator, array_filter($clauses));
+		$query = implode($this->separator, array_filter($clauses));
 
-		return $sql;
+		return $query;
 	}
 
 	public function buildDelete()
 	{
-		return 'DELETE ' . $this->identifier;
+		$identifiers = [$this->identifier, $this->relationIdentifier, $this->foreignIdentifier];
+
+		return 'DELETE ' . implode(',', $identifiers);
+	}
+
+	public function buildDirectedRelations()
+	{
+		$this->foreignIdentifier = $this->relationIdentifier . $this->identifier;
+
+		return "OPTIONAL MATCH ($this->identifier)-[$this->relationIdentifier]->($this->foreignIdentifier)";
 	}
 }
