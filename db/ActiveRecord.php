@@ -14,13 +14,30 @@ use Everyman\Neo4j\PropertyContainer;
 use Everyman\Neo4j\Query\ResultSet;
 use Everyman\Neo4j\Query\Row;
 use yii;
-use yii\db\ActiveQuery;
 use yii\db\ActiveQueryInterface;
 use yii\db\ActiveRecordInterface;
 use yii\db\BaseActiveRecord;
 
 class ActiveRecord extends BaseActiveRecord
 {
+	/**
+	 * The insert operation. This is mainly used when overriding [[transactions()]] to specify which operations are transactional.
+	 */
+	const OP_INSERT = 0x01;
+	/**
+	 * The update operation. This is mainly used when overriding [[transactions()]] to specify which operations are transactional.
+	 */
+	const OP_UPDATE = 0x02;
+	/**
+	 * The delete operation. This is mainly used when overriding [[transactions()]] to specify which operations are transactional.
+	 */
+	const OP_DELETE = 0x04;
+	/**
+	 * All three operations: insert, update, delete.
+	 * This is a shortcut of the expression: OP_INSERT | OP_UPDATE | OP_DELETE.
+	 */
+	const OP_ALL = 0x07;
+
 	/**
 	 * Updates the whole table using the provided attribute values and conditions.
 	 * For example, to change the status to be 1 for all customers whose status is 2:
@@ -338,7 +355,7 @@ class ActiveRecord extends BaseActiveRecord
 			return false;
 		}
 		$db = static::getDb();
-		if ($this->isTransactional(yii\db\ActiveRecord::OP_INSERT)) {
+		if ($this->isTransactional(self::OP_INSERT)) {
 			$transaction = $db->beginTransaction();
 			try {
 				$result = $this->insertInternal($attributes);
@@ -442,7 +459,7 @@ class ActiveRecord extends BaseActiveRecord
 	 * meaning all attributes that are loaded from DB will be saved.
 	 * @return integer|boolean the number of rows affected, or false if validation fails
 	 * or [[beforeSave()]] stops the updating process.
-	 * @throws StaleObjectException if [[optimisticLock|optimistic locking]] is enabled and the data
+	 * @throws yii\db\StaleObjectException if [[optimisticLock|optimistic locking]] is enabled and the data
 	 * being updated is outdated.
 	 * @throws \Exception in case update failed.
 	 */
@@ -453,7 +470,7 @@ class ActiveRecord extends BaseActiveRecord
 			return false;
 		}
 		$db = static::getDb();
-		if ($this->isTransactional(yii\db\ActiveRecord::OP_UPDATE)) {
+		if ($this->isTransactional(self::OP_UPDATE)) {
 			$transaction = $db->beginTransaction();
 			try {
 				$result = $this->updateInternal($attributeNames);
@@ -516,7 +533,7 @@ class ActiveRecord extends BaseActiveRecord
 	 *
 	 * @return integer|boolean the number of rows deleted, or false if the deletion is unsuccessful for some reason.
 	 * Note that it is possible the number of rows deleted is 0, even though the deletion execution is successful.
-	 * @throws StaleObjectException if [[optimisticLock|optimistic locking]] is enabled and the data
+	 * @throws yii\db\StaleObjectException if [[optimisticLock|optimistic locking]] is enabled and the data
 	 * being deleted is outdated.
 	 * @throws \Exception in case delete failed.
 	 */
@@ -562,7 +579,7 @@ class ActiveRecord extends BaseActiveRecord
 			}
 			$result = $this->deleteAll($condition);
 			if ($lock !== null && !$result) {
-				throw new StaleObjectException('The object being deleted is outdated.');
+				throw new yii\db\StaleObjectException('The object being deleted is outdated.');
 			}
 			$this->setOldAttributes(null);
 			$this->afterDelete();
@@ -584,7 +601,7 @@ class ActiveRecord extends BaseActiveRecord
 			return false;
 		}
 
-		return $this->tableName() === $record->tableName() && $this->getPrimaryKey() === $record->getPrimaryKey();
+		return $this->labelName() === $record->labelName() && $this->getPrimaryKey() === $record->getPrimaryKey();
 	}
 
 	/**

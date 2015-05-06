@@ -399,7 +399,7 @@ class Command extends \yii\base\Component
 	 */
 	public function queryAll($fetchMode = null)
 	{
-		$result = $this->queryInternal('fetchAll', $fetchMode);
+		$result = $this->queryInternal($fetchMode);
 
 		return count($result) > 0 ? $result : false;
 	}
@@ -415,9 +415,9 @@ class Command extends \yii\base\Component
 	 */
 	public function queryOne($fetchMode = null)
 	{
-		$result = $this->queryInternal('fetch', $fetchMode);
+		$result = $this->queryInternal($fetchMode);
 
-		return count($result) > 0 ? reset($result) : false;
+		return count($result) > 0 ? $result[0] : false;
 	}
 
 	/**
@@ -429,7 +429,7 @@ class Command extends \yii\base\Component
 	 */
 	public function queryScalar()
 	{
-		$result = $this->queryInternal('fetchColumn', 0);
+		$result = $this->queryInternal(0);
 		if (is_resource($result) && get_resource_type($result) === 'stream') {
 			return stream_get_contents($result);
 		} else {
@@ -446,18 +446,17 @@ class Command extends \yii\base\Component
 	 */
 	public function queryColumn()
 	{
-		return $this->queryInternal('fetchAll', \PDO::FETCH_COLUMN);
+		return $this->queryInternal(\PDO::FETCH_COLUMN);
 	}
 
 	/**
 	 * Performs the actual DB query of a SQL statement.
-	 * @param string $method method of PDOStatement to be called
 	 * @param integer $fetchMode the result fetch mode. Please refer to [PHP manual](http://www.php.net/manual/en/function.PDOStatement-setFetchMode.php)
 	 * for valid fetch modes. If this parameter is null, the value set in [[fetchMode]] will be used.
 	 * @return mixed|array the method execution result
 	 * @throws Exception if the query causes any problem
 	 */
-	private function queryInternal($method, $fetchMode = null)
+	private function queryInternal($fetchMode = null)
 	{
 		$db = $this->db;
 		$rawSql = $this->getRawQuery();
@@ -465,14 +464,13 @@ class Command extends \yii\base\Component
 		Yii::info($rawSql, __METHOD__);
 
 		/** @var \yii\caching\Cache $cache */
-		if ($db->enableQueryCache && $method !== '') {
+		if ($db->enableQueryCache) {
 			$cache = is_string($db->queryCache) ? Yii::$app->get($db->queryCache, false) : $db->queryCache;
 		}
 
 		if (isset($cache) && $cache instanceof Cache) {
 			$cacheKey = [
 				__CLASS__,
-				$method,
 				$db->dsn,
 				$db->username,
 				$rawSql,

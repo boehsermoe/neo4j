@@ -73,6 +73,9 @@ class ActiveQuery extends Query implements ActiveQueryInterface
 	use ActiveQueryTrait;
 	use ActiveRelationTrait;
 
+	const DIRECTION_IN = 'IN';
+	const DIRECTION_OUT = 'OUT';
+
 	/**
 	 * @var string the SQL statement to be executed for retrieving AR records.
 	 * This is set by [[ActiveRecord::findBySql()]].
@@ -91,6 +94,7 @@ class ActiveQuery extends Query implements ActiveQueryInterface
 	 */
 	public $joinWith;
 
+	public $direction;
 
 	/**
 	 * Constructor.
@@ -224,19 +228,23 @@ class ActiveQuery extends Query implements ActiveQueryInterface
 	 */
 	public function one($db = null)
 	{
+		$this->limit = 1;
 		$command = $this->createCommand($db);
 		$row = $command->queryOne();
+
 		if ($row !== false) {
-			/** @var $node PropertyContainer */
-			$node = $row->current();
+			if ($row instanceof PropertyContainer)
+			{
+				$row = $row->current()->getProperties();
+			}
 
 			if ($this->asArray) {
-				$model = $node->getProperties();
+				$model = $row;
 			} else {
 				/** @var ActiveRecord $class */
 				$class = $this->modelClass;
-				$model = $class::instantiate($node->getProperties());
-				$class::populateRecord($model, $node);
+				$model = $class::instantiate($row);
+				$class::populateRecord($model, $row);
 			}
 			if (!empty($this->with)) {
 				$models = [$model];
@@ -329,7 +337,8 @@ class ActiveQuery extends Query implements ActiveQueryInterface
 				$viaModels = $model === null ? [] : [$model];
 			}
 			$this->filterByModels($viaModels);
-		} else {
+		}
+		else {
 			$this->filterByModels([$this->primaryModel]);
 		}
 
@@ -342,6 +351,17 @@ class ActiveQuery extends Query implements ActiveQueryInterface
 		$this->where = $where;
 
 		return $command;
+	}
+
+	/**
+	 * @param ActiveRecord[] $models
+	 */
+	private function filterByModels($models)
+	{
+		foreach ($models as $model) {
+			$modelLabel = lcfirst($model->formName());
+			$this->joinWith($modelLabel, $this->link, $this->direction);
+		}
 	}
 
 	/**
@@ -379,14 +399,14 @@ class ActiveQuery extends Query implements ActiveQueryInterface
 	 * @param boolean|array $eagerLoading whether to eager load the relations specified in `$with`.
 	 * When this is a boolean, it applies to all relations specified in `$with`. Use an array
 	 * to explicitly list which relations in `$with` need to be eagerly loaded.
-	 * @param string|array $joinType the join type of the relations specified in `$with`.
+	 * @param string|array $label the join type of the relations specified in `$with`.
 	 * When this is a string, it applies to all relations specified in `$with`. Use an array
 	 * in the format of `relationName => joinType` to specify different join types for different relations.
 	 * @return static the query object itself
 	 */
-	public function joinWith($with, $eagerLoading = true, $joinType = 'LEFT JOIN')
+	public function joinWith($with, $label, $direction, $eagerLoading = true)
 	{
-		$this->joinWith[] = [(array) $with, $eagerLoading, $joinType];
+		$this->joinWith[] = [(array) $with, $eagerLoading, $label];
 
 		return $this;
 	}
