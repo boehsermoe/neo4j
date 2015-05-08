@@ -96,7 +96,7 @@ class ExecuteCypherQuery extends Command
 			/** @var $container PropertyContainer */
 			foreach ($row as $container)
 			{
-				$result[] = $container->getProperties();
+				$result[] = array_merge(['id' => $container->getId()], $container->getProperties());
 			}
 		}
 

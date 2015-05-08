@@ -135,6 +135,8 @@ class ActiveQuery extends Query implements ActiveQueryInterface
 			$this->from = [$tableName];
 		}
 
+		return;
+		// Todo
 		if (empty($this->select) && !empty($this->join)) {
 			foreach ((array)$this->from as $alias => $table) {
 				if (is_string($alias)) {
@@ -235,7 +237,7 @@ class ActiveQuery extends Query implements ActiveQueryInterface
 		if ($row !== false) {
 			if ($row instanceof PropertyContainer)
 			{
-				$row = $row->current()->getProperties();
+				$row = $row->getProperties();
 			}
 
 			if ($this->asArray) {
@@ -359,9 +361,38 @@ class ActiveQuery extends Query implements ActiveQueryInterface
 	private function filterByModels($models)
 	{
 		foreach ($models as $model) {
-			$modelLabel = lcfirst($model->formName());
-			$this->joinWith($modelLabel, $this->link, $this->direction);
+			$modelLabel = $model->formName();
+			$this->join($modelLabel, $this->link, $this->direction);
 		}
+	}
+
+	/**
+	 * Appends a JOIN part to the query.
+	 * The first parameter specifies what type of join it is.
+	 *
+	 * @param string       $type   the type of join, such as INNER JOIN, LEFT JOIN.
+	 * @param string|array $label  the table to be joined.
+	 *
+	 * Use string to represent the name of the table to be joined.
+	 * Table name can contain schema prefix (e.g. 'public.user') and/or table alias (e.g. 'user u').
+	 * The method will automatically quote the table name unless it contains some parenthesis
+	 * (which means the table is given as a sub-query or DB expression).
+	 *
+	 * Use array to represent joining with a sub-query. The array must contain only one element.
+	 * The value must be a Query object representing the sub-query while the corresponding key
+	 * represents the alias for the sub-query.
+	 *
+	 * @param string|array $direction     the join condition that should appear in the ON part.
+	 *                             Please refer to [[where()]] on how to specify this parameter.
+	 * @param array        $params the parameters (name => value) to be bound to the query.
+	 *
+	 * @return Query the query object itself
+	 */
+	public function join($type, $label, $direction, $params = [])
+	{
+		$this->join[] = [$type, $label, $direction];
+
+		return $this->addParams($params);
 	}
 
 	/**
@@ -406,7 +437,7 @@ class ActiveQuery extends Query implements ActiveQueryInterface
 	 */
 	public function joinWith($with, $label, $direction, $eagerLoading = true)
 	{
-		$this->joinWith[] = [(array) $with, $eagerLoading, $label];
+		$this->joinWith[] = [(array) $with, $eagerLoading, $label, $direction];
 
 		return $this;
 	}
@@ -417,8 +448,8 @@ class ActiveQuery extends Query implements ActiveQueryInterface
 		$this->join = [];
 
 		foreach ($this->joinWith as $config) {
-			list ($with, $eagerLoading, $joinType) = $config;
-			$this->joinWithRelations(new $this->modelClass, $with, $joinType);
+			list ($with, $eagerLoading, $label, $direction) = $config;
+			$this->joinWithRelations(new $this->modelClass, $with, $label, $direction);
 
 			if (is_array($eagerLoading)) {
 				foreach ($with as $name => $callback) {
@@ -470,9 +501,10 @@ class ActiveQuery extends Query implements ActiveQueryInterface
 	 * Modifies the current query by adding join fragments based on the given relations.
 	 * @param ActiveRecord $model the primary model
 	 * @param array $with the relations to be joined
-	 * @param string|array $joinType the join type
+	 * @param string|array $label the join type
+	 * @param string $direction
 	 */
-	private function joinWithRelations($model, $with, $joinType)
+	private function joinWithRelations($model, $with, $label, $direction)
 	{
 		$relations = [];
 
@@ -491,7 +523,7 @@ class ActiveQuery extends Query implements ActiveQueryInterface
 				$fullName = $prefix === '' ? $name : "$prefix.$name";
 				if (!isset($relations[$fullName])) {
 					$relations[$fullName] = $relation = $primaryModel->getRelation($name);
-					$this->joinWithRelation($parent, $relation, $this->getJoinType($joinType, $fullName));
+					$this->joinWithRelation($parent, $relation, $this->getJoinType($label, $fullName));
 				} else {
 					$relation = $relations[$fullName];
 				}
@@ -507,7 +539,7 @@ class ActiveQuery extends Query implements ActiveQueryInterface
 				if ($callback !== null) {
 					call_user_func($callback, $relation);
 				}
-				$this->joinWithRelation($parent, $relation, $this->getJoinType($joinType, $fullName));
+				$this->joinWithRelation($parent, $relation, $this->getJoinType($label, $fullName));
 			}
 		}
 	}
@@ -537,7 +569,7 @@ class ActiveQuery extends Query implements ActiveQueryInterface
 		if (empty($query->from)) {
 			/** @var ActiveRecord $modelClass */
 			$modelClass = $query->modelClass;
-			$tableName = $modelClass::tableName();
+			$tableName = $modelClass::labelName();
 		} else {
 			$tableName = '';
 			foreach ($query->from as $alias => $tableName) {

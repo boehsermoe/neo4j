@@ -409,7 +409,7 @@ class Command extends \yii\base\Component
 	 * This method is best used when only the first row of result is needed for a query.
 	 * @param integer $fetchMode the result fetch mode. Please refer to [PHP manual](http://www.php.net/manual/en/function.PDOStatement-setFetchMode.php)
 	 * for valid fetch modes. If this parameter is null, the value set in [[fetchMode]] will be used.
-	 * @return Row|boolean the first row (in terms of an array) of the query result. False is returned if the query
+	 * @return Row|array|boolean the first row (in terms of an array) of the query result. False is returned if the query
 	 * results in nothing.
 	 * @throws Exception execution failed
 	 */
@@ -498,7 +498,7 @@ class Command extends \yii\base\Component
 
 			return $result;
 		} catch (\Exception $e) {
-			Yii::endProfile($token, 'yii\db\Command::query');
+			Yii::endProfile($token, __METHOD__);
 			if ($e instanceof Exception) {
 				throw $e;
 			} else {

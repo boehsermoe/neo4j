@@ -171,11 +171,11 @@ class QueryBuilder extends \yii\db\QueryBuilder
 			$this->buildMatch($query->selectOption),
 			'(',
 			$this->buildFrom($query->from, $params),
-			$this->buildProperties($query->select, $params),
+			#$this->buildProperties($query->select, $params),
 			')',
 			$this->buildJoin($query->join, $params),
 			$this->buildWhere($query->where, $params),
-			$this->buildReturn($query->groupBy),
+			$this->buildReturn($query->groupBy ? : $query->select),
 			$this->buildOrderBy($query->orderBy),
 			$this->buildLimit($query->limit, $query->offset),
 		];
@@ -319,16 +319,24 @@ class QueryBuilder extends \yii\db\QueryBuilder
 			if (!is_array($join) || !isset($join[0], $join[1])) {
 				throw new Exception('A join clause must be specified as an array of join type, join table, and optionally join condition.');
 			}
-			// 0:join type, 1:join table, 2:on-condition (optional)
-			list ($joinType, $label, $condition) = $join;
+			list ($foreignLabel, $relationLabels, $direction) = $join;
 
-			$labels = (array)$label;
-			$label = reset($labels);
+			$identifier = Inflector::variablize($foreignLabel);
+			$foreignNode = "($identifier:$foreignLabel)";
 
-			$identifier = Inflector::camelize($label);
-			$foreignNode = "($identifier:$label)";
+			$relationLabels = (array)$relationLabels;
+			$relationLabel = reset($relationLabels);
+			$relationIdentifier = Inflector::variablize($relationLabel);
+			$relation = "[$relationIdentifier:$relationLabel]";
 
-			$relation = '-->';
+			if ($direction == ActiveQuery::DIRECTION_OUT)
+			{
+				$relation = "<-$relation-";
+			}
+			else
+			{
+				$relation = "-$relation->";
+			}
 
 			$joins[$i] = $relation . $foreignNode;
 		}
