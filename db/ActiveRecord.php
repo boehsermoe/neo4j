@@ -629,15 +629,6 @@ class ActiveRecord extends BaseActiveRecord
 	/**
 	 * Establishes the relationship between two models.
 	 *
-	 * The relationship is established by setting the foreign key value(s) in one model
-	 * to be the corresponding primary key value(s) in the other model.
-	 * The model with the foreign key will be saved into database without performing validation.
-	 *
-	 * If the relationship involves a pivot table, a new row will be inserted into the
-	 * pivot table which contains the primary key values from both models.
-	 *
-	 * Note that this method requires that the primary key value is not null.
-	 *
 	 * @param string $name the case sensitive name of the relationship
 	 * @param ActiveRecord $model the model to be linked with the current one.
 	 * @param array $extraColumns additional column values to be saved into the pivot table.
