@@ -15,6 +15,13 @@
         "everyman/neo4jphp": "dev-master"
     },
 
+    "repositories": [
+        {
+            "type": "git",
+            "url": "https://github.com/boehsermoe/neo4j"
+        }
+    ],
+
     "autoload": {
         "psr-4": {
             "neo4j\\": ""
