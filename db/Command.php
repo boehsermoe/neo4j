@@ -536,8 +536,10 @@ class Command extends \yii\base\Component
 
         foreach ($properties as $key => $value)
         {
+            $placeholder = ":".$key;
+
             $params[$key] = $value;
-            $values[$key] = "{".$key."}";
+            $values[$key] = $placeholder;
         }
 
         $node = $this->db->client->makeNode($values);
@@ -597,8 +599,10 @@ class Command extends \yii\base\Component
 
         foreach ($properties as $key => $value)
         {
+            $placeholder = ":".$key;
+
             $params[$key] = $value;
-            $values[$key] = "{".$key."}";
+            $values[$key] = $placeholder;
         }
 
 		$node = $this->db->client->getNode($id);
