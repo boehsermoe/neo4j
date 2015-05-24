@@ -531,20 +531,9 @@ class Command extends \yii\base\Component
 	 */
 	public function insert($label, $properties)
 	{
-		$params = [];
-        $values = [];
+        $node = $this->db->client->makeNode($properties);
 
-        foreach ($properties as $key => $value)
-        {
-            $placeholder = ":".$key;
-
-            $params[$key] = $value;
-            $values[$key] = $placeholder;
-        }
-
-        $node = $this->db->client->makeNode($values);
-
-		return $this->setLabel($label)->setContainer($node)->bindValues($params);
+		return $this->setLabel($label)->setContainer($node);
 	}
 
 	/**
@@ -595,18 +584,8 @@ class Command extends \yii\base\Component
 	 */
 	public function update($label, $properties, $id, $condition = [], $params = [])
 	{
-        $values = [];
-
-        foreach ($properties as $key => $value)
-        {
-            $placeholder = ":".$key;
-
-            $params[$key] = $value;
-            $values[$key] = $placeholder;
-        }
-
 		$node = $this->db->client->getNode($id);
-		$node->setProperties($values);
+		$node->setProperties($properties);
 
 		return $this->setLabel($label)->setContainer($node)->bindValues($params);
 
