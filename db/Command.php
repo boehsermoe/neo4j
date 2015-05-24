@@ -532,7 +532,15 @@ class Command extends \yii\base\Component
 	public function insert($label, $properties)
 	{
 		$params = [];
-		$node = $this->db->client->makeNode($properties);
+        $values = [];
+
+        foreach ($properties as $key => $value)
+        {
+            $params[$key] = $value;
+            $values[$key] = "{".$key."}";
+        }
+
+        $node = $this->db->client->makeNode($values);
 
 		return $this->setLabel($label)->setContainer($node)->bindValues($params);
 	}
@@ -585,9 +593,16 @@ class Command extends \yii\base\Component
 	 */
 	public function update($label, $properties, $id, $condition = [], $params = [])
 	{
-		$params = [];
+        $values = [];
+
+        foreach ($properties as $key => $value)
+        {
+            $params[$key] = $value;
+            $values[$key] = "{".$key."}";
+        }
+
 		$node = $this->db->client->getNode($id);
-		$node->setProperties($properties);
+		$node->setProperties($values);
 
 		return $this->setLabel($label)->setContainer($node)->bindValues($params);
 

@@ -386,8 +386,7 @@ class ActiveRecord extends BaseActiveRecord
         if (!$this->beforeSave(true)) {
             return false;
         }
-        #$values = $this->getDirtyAttributes($attributes);
-        $values = $this->getAttributes($attributes);
+        $values = $this->getDirtyAttributes($attributes);
         if (empty($values)) {
             foreach ($this->getPrimaryKey(true) as $key => $value) {
                 $values[$key] = $value;
