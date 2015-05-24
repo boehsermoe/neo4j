@@ -407,8 +407,9 @@ class ActiveRecord extends BaseActiveRecord
 			$values[$name] = $id;
 		}
 
-		$this->afterSave(true);
-		$this->setOldAttributes($values);
+        $changedAttributes = array_fill_keys(array_keys($values), null);
+        $this->setOldAttributes($values);
+        $this->afterSave(true, $changedAttributes);
 
 		return true;
 	}
@@ -499,11 +500,12 @@ class ActiveRecord extends BaseActiveRecord
 		if (!$this->beforeSave(false)) {
 			return false;
 		}
-		$values = $this->getAttributes($attributes);
-		if (empty($values)) {
-			$this->afterSave(false);
-			return 0;
-		}
+
+        $values = $this->getDirtyAttributes($attributes);
+        if (empty($values)) {
+            $this->afterSave(false, $values);
+            return 0;
+        }
 
 		$command = static::getDb()->createCommand();
 		$command->update(static::labelName(), $values, $this->id);
@@ -512,8 +514,12 @@ class ActiveRecord extends BaseActiveRecord
 			return false;
 		}
 
-		$this->afterSave(false);
-		$this->setOldAttributes($values);
+        $changedAttributes = [];
+        foreach ($values as $name => $value) {
+            $changedAttributes[$name] = isset($this->oldAttributes[$name]) ? $this->oldAttributes[$name] : null;
+            $this->oldAttributes[$name] = $value;
+        }
+        $this->afterSave(false, $changedAttributes);
 
 		return true;
 	}
@@ -723,7 +729,7 @@ class ActiveRecord extends BaseActiveRecord
 			}
 		}
 
-		if ($related)
+		if (isset($related))
 		{
 			$this->populateRelation($name, $related);
 		}
