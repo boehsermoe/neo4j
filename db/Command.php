@@ -204,7 +204,15 @@ class Command extends \yii\base\Component
 	 */
 	public function prepare()
 	{
-		return;
+        foreach ($this->container->getProperties() as $key => $value)
+        {
+            if (!mb_check_encoding($value, 'UTF-8'))
+            {
+                $this->container->setProperty($key, utf8_encode($value));
+            }
+        }
+
+        return;
 		if ($this->pdoStatement == null) {
 			$sql = $this->getSql();
 			try {
@@ -334,6 +342,8 @@ class Command extends \yii\base\Component
 			return $result;
 		}
 		catch (\Exception $e) {
+            throw $e;
+
 			Yii::endProfile($token, __METHOD__);
 			if ($e instanceof Exception) {
 				throw $e;
