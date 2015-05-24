@@ -496,10 +496,20 @@ class ActiveRecord extends BaseActiveRecord
             return false;
         }
 
+        /*
         $values = $this->getDirtyAttributes($attributes);
         if (empty($values)) {
             $this->afterSave(false, $values);
             return 0;
+        }
+        */
+        $values = $this->attributes;
+        foreach ($this->primaryKey() as $primaryKey)
+        {
+            if (isset($values[$primaryKey]))
+            {
+                unset($values[$primaryKey]);
+            }
         }
 
         $command = static::getDb()->createCommand();
@@ -510,10 +520,13 @@ class ActiveRecord extends BaseActiveRecord
         }
 
         $changedAttributes = [];
+        $oldAttributes = $this->oldAttributes;
         foreach ($values as $name => $value) {
-            $changedAttributes[$name] = isset($this->oldAttributes[$name]) ? $this->oldAttributes[$name] : null;
-            $this->oldAttributes[$name] = $value;
+            $changedAttributes[$name] = isset($oldAttributes[$name]) ? $oldAttributes[$name] : null;
+            $oldAttributes[$name] = $value;
         }
+        $this->oldAttributes = $oldAttributes;
+
         $this->afterSave(false, $changedAttributes);
 
         return true;
