@@ -386,12 +386,8 @@ class ActiveRecord extends BaseActiveRecord
         if (!$this->beforeSave(true)) {
             return false;
         }
-        $values = $this->getDirtyAttributes($attributes);
-        if (empty($values)) {
-            foreach ($this->getPrimaryKey(true) as $key => $value) {
-                $values[$key] = $value;
-            }
-        }
+
+        $values = $this->attributes;
 
         $db = static::getDb();
         $command = $db->createCommand()->insert($this->labelName(), $values);
