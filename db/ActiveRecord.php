@@ -18,8 +18,16 @@ use yii\db\ActiveQueryInterface;
 use yii\db\ActiveRecordInterface;
 use yii\db\BaseActiveRecord;
 
+/**
+ * Class ActiveRecord
+ * @package neo4j\db
+ *
+ * @property integer $id
+ */
 class ActiveRecord extends BaseActiveRecord
 {
+    private $id;
+
     /**
      * The insert operation. This is mainly used when overriding [[transactions()]] to specify which operations are transactional.
      */
@@ -150,6 +158,14 @@ class ActiveRecord extends BaseActiveRecord
 
     /**
      * @inheritdoc
+     */
+    public final function getId()
+    {
+        return $this->id;
+    }
+
+    /**
+     * @inheritdoc
      *
      * @return ActiveQuery
      */
@@ -205,7 +221,10 @@ class ActiveRecord extends BaseActiveRecord
      */
     public function attributes()
     {
-        return parent::attributes();
+        $properties = ['id'];
+        $properties = array_merge($properties, parent::attributes());
+
+        return $properties;
     }
 
     /**

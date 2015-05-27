@@ -385,8 +385,8 @@ class Command extends \yii\base\Component
 	 */
 	public function executeCypherQuery()
 	{
-		$query = new Query($this->db->client, $this->_query, $this->params);
-		$command = new ExecuteCypherQuery($this->db->client, $query);
+        $query = new Query($this->db->client, $this->_query, $this->params);
+        $command = new ExecuteCypherQuery($this->db->client, $query);
 
 		return $command->execute();
 	}
@@ -414,7 +414,7 @@ class Command extends \yii\base\Component
 	{
 		$result = $this->queryInternal($fetchMode);
 
-		return count($result) > 0 ? $result : false;
+		return count($result) > 0 ? $result : [];
 	}
 
 	/**
@@ -627,14 +627,9 @@ class Command extends \yii\base\Component
 	 */
 	public function delete($label, $condition = '', $params = [])
 	{
-		$query = $this->db->getQueryBuilder()->delete($label, $condition, $params);
+		list($query, $params) = $this->db->getQueryBuilder()->delete($label, $condition, $params);
 
-		return $this->setQuery($query);
-
-		// Todo: QueryBuilder
-		$sql = $this->db->getQueryBuilder()->delete($table, $condition, $params);
-
-		return $this->setSql($sql)->bindValues($params);
+		return $this->setQuery($query)->bindValues($params);
 	}
 
 	/**

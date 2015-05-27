@@ -257,7 +257,7 @@ class QueryBuilder extends \yii\db\QueryBuilder
 			}
 		}
 
-		return count($parts) === 1 ? $parts[0] : '(' . implode(') AND (', $parts) . ')';
+        return count($parts) === 1 ? $parts[0] : '(' . implode(') AND (', $parts) . ')';
 	}
 
 	public function buildMatch($selectOption = null)
@@ -468,16 +468,18 @@ class QueryBuilder extends \yii\db\QueryBuilder
 			$this->buildMatch(),
 			'(',
 			$this->buildFrom($label, $params),
-			$this->buildProperties($condition, $params),
+			//$this->buildProperties($condition, $params),
 			')',
 			$this->buildUndirectedRelations(),
-			$this->buildDelete(),
-			$this->buildWhere($condition, $params),
+            $this->buildWhere($condition, $params),
+            $this->buildDelete(),
 		];
 
-		$query = implode($this->separator, array_filter($clauses));
+        $queryString = implode($this->separator, array_filter($clauses));
 
-		return $query;
+        $params = $this->postpareParams($params, $queryString);
+
+        return [$queryString, $params];
 	}
 
 	public function buildDelete()
