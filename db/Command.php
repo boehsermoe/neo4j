@@ -204,11 +204,14 @@ class Command extends \yii\base\Component
 	 */
 	public function prepare()
 	{
-        foreach ($this->container->getProperties() as $key => $value)
+        if ($this->container !== null)
         {
-            if (!mb_check_encoding($value, 'UTF-8'))
+            foreach ($this->container->getProperties() as $key => $value)
             {
-                $this->container->setProperty($key, utf8_encode($value));
+                if (!mb_check_encoding($value, 'UTF-8'))
+                {
+                    $this->container->setProperty($key, utf8_encode($value));
+                }
             }
         }
 
