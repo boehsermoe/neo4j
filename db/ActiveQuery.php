@@ -306,11 +306,10 @@ class ActiveQuery extends Query implements ActiveQueryInterface
 		if ($this->node === null) {
 			list ($query, $params) = $db->getQueryBuilder()->build($this);
 		} else {
-			$node = $this->node;
 			$params = $this->params;
 		}
 
-		return $db->createCommand($node, $query, $params);
+		return $db->createCommand($this->node, $query, $params);
 	}
 
 	/**

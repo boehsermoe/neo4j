@@ -164,7 +164,7 @@ class QueryBuilder extends \yii\db\QueryBuilder
 	{
 		$query->prepareBuild($this);
 
-		$params = empty($params) ? $query->params : array_merge($params, $query->params);
+        $params = empty($params) ? $query->params : array_merge($params, $query->params);
 
 		$clauses = [
 			$this->buildMatch($query->selectOption),
@@ -194,6 +194,7 @@ class QueryBuilder extends \yii\db\QueryBuilder
 	private function postpareParams($params, &$queryString)
 	{
 		$vars = [];
+
 		foreach ($params as $name => $value)
 		{
 			$var = substr($name, 1);
@@ -202,12 +203,12 @@ class QueryBuilder extends \yii\db\QueryBuilder
 			$vars[$var] = $value;
 		}
 
-		return $vars;
+        return $vars;
 	}
 
 	public function buildHashCondition($condition, &$params)
 	{
-		$parts = [];
+        $parts = [];
 		foreach ($condition as $column => $value)
 		{
 			if (is_array($value))
@@ -216,14 +217,24 @@ class QueryBuilder extends \yii\db\QueryBuilder
 			}
 			else
 			{
-				if (strpos($column, '(') === false)
-				{
-					$column = $this->db->quoteColumnName($column);
-				}
-				if ($this->identifier)
-				{
-					$column = $this->identifier .'.'. $column;
-				}
+
+                if ($column === 'id')
+                {
+                    $column = "id($this->identifier)";
+                    $value = intval($value);
+                }
+				else
+                {
+                    if (strpos($column, '(') === false)
+                    {
+                        $column = $this->db->quoteColumnName($column);
+                    }
+
+                    if ($this->identifier)
+                    {
+                        $column = $this->identifier .'.'. $column;
+                    }
+                }
 
 				if ($value === null)
 				{
@@ -370,13 +381,15 @@ class QueryBuilder extends \yii\db\QueryBuilder
 			{
 				$return .= 'DISTINCT ';
 			}
+
+            $return .= $this->identifier;
 		}
 		else
 		{
-			$return .= $this->buildColumns($columns) . ' ';
+			$return .= $this->buildColumns($columns);
 		}
 
-		return $return . $this->identifier;
+		return $return;
 	}
 
 	/**
@@ -394,6 +407,7 @@ class QueryBuilder extends \yii\db\QueryBuilder
 				$columns = preg_split('/\s*,\s*/', $columns, -1, PREG_SPLIT_NO_EMPTY);
 			}
 		}
+
 		foreach ($columns as $i => $column) {
 			if ($column instanceof Expression) {
 				$columns[$i] = $column->expression;
@@ -456,7 +470,7 @@ class QueryBuilder extends \yii\db\QueryBuilder
 			$this->buildFrom($label, $params),
 			$this->buildProperties($condition, $params),
 			')',
-			$this->buildDirectedRelations(),
+			$this->buildUndirectedRelations(),
 			$this->buildDelete(),
 			$this->buildWhere($condition, $params),
 		];
@@ -473,8 +487,8 @@ class QueryBuilder extends \yii\db\QueryBuilder
 		return 'DELETE ' . implode(',', $identifiers);
 	}
 
-	public function buildDirectedRelations()
+	public function buildUndirectedRelations()
 	{
-		return "OPTIONAL MATCH ($this->identifier)<-[$this->relationIdentifier]-()";
+		return "OPTIONAL MATCH ($this->identifier)-[$this->relationIdentifier]-()";
 	}
 }

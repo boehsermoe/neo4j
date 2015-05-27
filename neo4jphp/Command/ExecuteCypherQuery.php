@@ -44,6 +44,7 @@ class ExecuteCypherQuery extends Command
 		if ($params) {
 			$data['params'] = $params;
 		}
+
 		return $data;
 	}
 
@@ -93,10 +94,16 @@ class ExecuteCypherQuery extends Command
 		/** @var $row Row */
 		foreach ($this->resultSet as $row)
 		{
-			/** @var $container PropertyContainer */
 			foreach ($row as $container)
 			{
-				$result[] = array_merge(['id' => $container->getId()], $container->getProperties());
+                if (is_array($container))
+                {
+                    $result[] = $container;
+                }
+                elseif ($container instanceof PropertyContainer)
+                {
+				    $result[] = array_merge(['id' => $container->getId()], $container->getProperties());
+                }
 			}
 		}
 
