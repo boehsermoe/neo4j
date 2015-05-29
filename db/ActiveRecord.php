@@ -18,8 +18,16 @@ use yii\db\ActiveQueryInterface;
 use yii\db\ActiveRecordInterface;
 use yii\db\BaseActiveRecord;
 
+/**
+ * Class ActiveRecord
+ * @package neo4j\db
+ *
+ * @property integer $id
+ */
 class ActiveRecord extends BaseActiveRecord
 {
+    private $id;
+
     /**
      * The insert operation. This is mainly used when overriding [[transactions()]] to specify which operations are transactional.
      */
@@ -150,6 +158,14 @@ class ActiveRecord extends BaseActiveRecord
 
     /**
      * @inheritdoc
+     */
+    public final function getId()
+    {
+        return $this->id;
+    }
+
+    /**
+     * @inheritdoc
      *
      * @return ActiveQuery
      */
@@ -205,7 +221,10 @@ class ActiveRecord extends BaseActiveRecord
      */
     public function attributes()
     {
-        return parent::attributes();
+        $properties = ['id'];
+        $properties = array_merge($properties, parent::attributes());
+
+        return $properties;
     }
 
     /**
@@ -496,10 +515,20 @@ class ActiveRecord extends BaseActiveRecord
             return false;
         }
 
+        /*
         $values = $this->getDirtyAttributes($attributes);
         if (empty($values)) {
             $this->afterSave(false, $values);
             return 0;
+        }
+        */
+        $values = $this->attributes;
+        foreach ($this->primaryKey() as $primaryKey)
+        {
+            if (isset($values[$primaryKey]))
+            {
+                unset($values[$primaryKey]);
+            }
         }
 
         $command = static::getDb()->createCommand();
@@ -510,10 +539,13 @@ class ActiveRecord extends BaseActiveRecord
         }
 
         $changedAttributes = [];
+        $oldAttributes = $this->oldAttributes;
         foreach ($values as $name => $value) {
-            $changedAttributes[$name] = isset($this->oldAttributes[$name]) ? $this->oldAttributes[$name] : null;
-            $this->oldAttributes[$name] = $value;
+            $changedAttributes[$name] = isset($oldAttributes[$name]) ? $oldAttributes[$name] : null;
+            $oldAttributes[$name] = $value;
         }
+        $this->oldAttributes = $oldAttributes;
+
         $this->afterSave(false, $changedAttributes);
 
         return true;

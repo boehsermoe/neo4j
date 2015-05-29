@@ -204,7 +204,18 @@ class Command extends \yii\base\Component
 	 */
 	public function prepare()
 	{
-		return;
+        if ($this->container !== null)
+        {
+            foreach ($this->container->getProperties() as $key => $value)
+            {
+                if (!mb_check_encoding($value, 'UTF-8'))
+                {
+                    $this->container->setProperty($key, utf8_encode($value));
+                }
+            }
+        }
+
+        return;
 		if ($this->pdoStatement == null) {
 			$sql = $this->getSql();
 			try {
@@ -334,6 +345,8 @@ class Command extends \yii\base\Component
 			return $result;
 		}
 		catch (\Exception $e) {
+            throw $e;
+
 			Yii::endProfile($token, __METHOD__);
 			if ($e instanceof Exception) {
 				throw $e;
@@ -372,8 +385,8 @@ class Command extends \yii\base\Component
 	 */
 	public function executeCypherQuery()
 	{
-		$query = new Query($this->db->client, $this->_query, $this->params);
-		$command = new ExecuteCypherQuery($this->db->client, $query);
+        $query = new Query($this->db->client, $this->_query, $this->params);
+        $command = new ExecuteCypherQuery($this->db->client, $query);
 
 		return $command->execute();
 	}
@@ -401,7 +414,7 @@ class Command extends \yii\base\Component
 	{
 		$result = $this->queryInternal($fetchMode);
 
-		return count($result) > 0 ? $result : false;
+		return count($result) > 0 ? $result : [];
 	}
 
 	/**
@@ -614,14 +627,9 @@ class Command extends \yii\base\Component
 	 */
 	public function delete($label, $condition = '', $params = [])
 	{
-		$query = $this->db->getQueryBuilder()->delete($label, $condition, $params);
+		list($query, $params) = $this->db->getQueryBuilder()->delete($label, $condition, $params);
 
-		return $this->setQuery($query);
-
-		// Todo: QueryBuilder
-		$sql = $this->db->getQueryBuilder()->delete($table, $condition, $params);
-
-		return $this->setSql($sql)->bindValues($params);
+		return $this->setQuery($query)->bindValues($params);
 	}
 
 	/**
