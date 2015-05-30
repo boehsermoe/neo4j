@@ -271,7 +271,6 @@ class QueryBuilder extends \yii\db\QueryBuilder
 			}
 			else
 			{
-
                 if ($column === 'id')
                 {
                     $column = "id($this->identifier)";
@@ -313,6 +312,114 @@ class QueryBuilder extends \yii\db\QueryBuilder
 
         return count($parts) === 1 ? $parts[0] : '(' . implode(') AND (', $parts) . ')';
 	}
+
+    /**
+     * Creates an SQL expressions with the `IN` operator.
+     * @param string $operator the operator to use (e.g. `IN` or `NOT IN`)
+     * @param array $operands the first operand is the column name. If it is an array
+     * a composite IN condition will be generated.
+     * The second operand is an array of values that column value should be among.
+     * If it is an empty array the generated expression will be a `false` value if
+     * operator is `IN` and empty if operator is `NOT IN`.
+     * @param array $params the binding parameters to be populated
+     * @return string the generated SQL expression
+     * @throws Exception if wrong number of operands have been given.
+     */
+    public function buildInCondition($operator, $operands, &$params)
+    {
+        if (!isset($operands[0], $operands[1])) {
+            throw new Exception("Operator '$operator' requires two operands.");
+        }
+        list($column, $values) = $operands;
+
+        if ($values === [] || $column === []) {
+            return $operator === 'IN' ? '0=1' : '';
+        }
+
+        if ($values instanceof Query) {
+            return $this->buildSubqueryInCondition($operator, $column, $values, $params);
+        }
+
+        $values = (array) $values;
+
+        if (count($column) > 1) {
+            return $this->buildCompositeInCondition($operator, $column, $values, $params);
+        }
+
+        if (is_array($column)) {
+            $column = reset($column);
+        }
+        foreach ($values as $i => $value) {
+            if (is_array($value)) {
+                $value = isset($value[$column]) ? $value[$column] : null;
+            }
+            if ($value === null) {
+                $values[$i] = 'NULL';
+            } elseif ($value instanceof Expression) {
+                $values[$i] = $value->expression;
+                foreach ($value->params as $n => $v) {
+                    $params[$n] = $v;
+                }
+            } else {
+                $phName = self::PARAM_PREFIX . count($params);
+                $params[$phName] = $value;
+                $values[$i] = $phName;
+            }
+        }
+
+        if ($column === 'id')
+        {
+            $column = "id($this->identifier)";
+        }
+        elseif (strpos($column, '(') === false) {
+            $column = $this->db->quoteColumnName($column);
+        }
+
+        if (count($values) > 1) {
+            return "$column $operator (" . implode(', ', $values) . ')';
+        } else {
+            $operator = $operator === 'IN' ? '=' : '<>';
+            return $column . $operator . reset($values);
+        }
+    }
+
+    /**
+     * Builds SQL for IN condition
+     *
+     * @param string $operator
+     * @param array $columns
+     * @param array $values
+     * @param array $params
+     * @return string SQL
+     */
+    protected function buildCompositeInCondition($operator, $columns, $values, &$params)
+    {
+        $vss = [];
+        foreach ($values as $value) {
+            $vs = [];
+            foreach ($columns as $column) {
+                if (isset($value[$column])) {
+                    $phName = self::PARAM_PREFIX . count($params);
+                    $params[$phName] = $value[$column];
+                    $vs[] = $phName;
+                } else {
+                    $vs[] = 'NULL';
+                }
+            }
+            $vss[] = '(' . implode(', ', $vs) . ')';
+        }
+        foreach ($columns as $i => $column) {
+            if ($column === 'id')
+            {
+                $columns[$i] = "id($this->identifier)";
+            }
+            elseif (strpos($column, '(') === false) {
+                $columns[$i] = $this->db->quoteColumnName($column);
+            }
+        }
+
+        return '(' . implode(', ', $columns) . ") $operator (" . implode(', ', $vss) . ')';
+    }
 
 	public function buildMatch($selectOption = null)
 	{
