@@ -94,63 +94,84 @@ class ActiveQuery extends \yii\db\ActiveQuery
 
 	public $direction;
 
-	/**
-	 * Constructor.
-	 * @param array $modelClass the model class associated with this query
-	 * @param array $config configurations to be applied to the newly created query object
-	 */
-	public function __construct($modelClass, $config = [])
-	{
-		$this->modelClass = $modelClass;
-		parent::__construct($config);
-	}
+    /**
+     * @inheritdoc
+     */
+    public function prepare($builder)
+    {
+        // NOTE: because the same ActiveQuery may be used to build different SQL statements
+        // (e.g. by ActiveDataProvider, one for count query, the other for row data query,
+        // it is important to make sure the same ActiveQuery can be used to build SQL statements
+        // multiple times.
+        if (!empty($this->joinWith)) {
+            $this->buildJoinWith();
+            $this->joinWith = null;    // clean it up to avoid issue https://github.com/yiisoft/yii2/issues/2687
+        }
 
-	/**
-	 * Executes query and returns all results as an array.
-	 * @param Connection $db the DB connection used to create the DB command.
-	 * If null, the DB connection returned by [[modelClass]] will be used.
-	 * @return array|ActiveRecord[] the query results. If the query results in nothing, an empty array will be returned.
-	 */
-	public function all($db = null)
-	{
-		return parent::all($db);
-	}
+        if (empty($this->from)) {
+            /* @var $modelClass ActiveRecord */
+            $modelClass = $this->modelClass;
+            $tableName = $modelClass::labelName();
+            $this->from = [$tableName];
+        }
 
-	/**
-	 * @inheritdoc
-	 */
-	public function prepareBuild($builder)
-	{
-		if (!empty($this->joinWith)) {
-			$this->buildJoinWith();
-			$this->joinWith = null;    // clean it up to avoid issue https://github.com/yiisoft/yii2/issues/2687
-		}
+        return;
+        // Todo
 
-		if (empty($this->from)) {
-			/** @var ActiveRecord $modelClass */
-			$modelClass = $this->modelClass;
-			$tableName = $modelClass::labelName();
-			$this->from = [$tableName];
-		}
+        if (empty($this->select) && !empty($this->join)) {
+            foreach ((array) $this->from as $alias => $table) {
+                if (is_string($alias)) {
+                    $this->select = ["$alias.*"];
+                } elseif (is_string($table)) {
+                    if (preg_match('/^(.*?)\s+({{\w+}}|\w+)$/', $table, $matches)) {
+                        $alias = $matches[2];
+                    } else {
+                        $alias = $table;
+                    }
+                    $this->select = ["$alias.*"];
+                }
+                break;
+            }
+        }
 
-		return;
-		// Todo
-		if (empty($this->select) && !empty($this->join)) {
-			foreach ((array)$this->from as $alias => $table) {
-				if (is_string($alias)) {
-					$this->select = ["$alias.*"];
-				} elseif (is_string($table)) {
-					if (preg_match('/^(.*?)\s+({{\w+}}|\w+)$/', $table, $matches)) {
-						$alias = $matches[2];
-					} else {
-						$alias = $table;
-					}
-					$this->select = ["$alias.*"];
-				}
-				break;
-			}
-		}
-	}
+        if ($this->primaryModel === null) {
+            // eager loading
+            $query = Query::create($this);
+        } else {
+            // lazy loading of a relation
+            $where = $this->where;
+
+            if ($this->via instanceof self) {
+                // via junction table
+                $viaModels = $this->via->findJunctionRows([$this->primaryModel]);
+                $this->filterByModels($viaModels);
+            } elseif (is_array($this->via)) {
+                // via relation
+                /* @var $viaQuery ActiveQuery */
+                list($viaName, $viaQuery) = $this->via;
+                if ($viaQuery->multiple) {
+                    $viaModels = $viaQuery->all();
+                    $this->primaryModel->populateRelation($viaName, $viaModels);
+                } else {
+                    $model = $viaQuery->one();
+                    $this->primaryModel->populateRelation($viaName, $model);
+                    $viaModels = $model === null ? [] : [$model];
+                }
+                $this->filterByModels($viaModels);
+            } else {
+                $this->filterByModels([$this->primaryModel]);
+            }
+
+            $query = Query::create($this);
+            $this->where = $where;
+        }
+
+        if (!empty($this->on)) {
+            $query->andWhere($this->on);
+        }
+
+        return $query;
+    }
 
 	/**
 	 * @inheritdoc

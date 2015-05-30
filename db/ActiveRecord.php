@@ -135,7 +135,9 @@ class ActiveRecord extends BaseActiveRecord
      */
     public static function find()
     {
-        return new ActiveQuery(get_called_class());
+        $query = new ActiveQuery(get_called_class());
+
+        return $query;
     }
 
     /**
