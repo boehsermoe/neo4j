@@ -368,7 +368,7 @@ class QueryBuilder extends \yii\db\QueryBuilder
 			$query[] = 'SKIP ' . $skip;
 		}
 
-		return implode("\n", $query);
+		return implode(" ", $query);
 	}
 
 	public function buildReturn($columns, $distinct = false)
@@ -409,7 +409,11 @@ class QueryBuilder extends \yii\db\QueryBuilder
 		}
 
 		foreach ($columns as $i => $column) {
-			if ($column instanceof Expression) {
+            if ($column === 'id')
+            {
+                $columns[$i] = "id($this->identifier)";
+            }
+			elseif ($column instanceof Expression) {
 				$columns[$i] = $column->expression;
 			}
 		}
