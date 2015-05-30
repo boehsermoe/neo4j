@@ -3,9 +3,6 @@
 namespace neo4j\db;
 use Everyman\Neo4j\PropertyContainer;
 use Everyman\Neo4j\Query\Row;
-use yii\db\ActiveQueryInterface;
-use yii\db\ActiveQueryTrait;
-use yii\db\ActiveRelationTrait;
 use yii\db\Query;
 
 /**
@@ -64,21 +61,17 @@ use yii\db\Query;
  * marks a relation as inverse of another relation and [[onCondition()]] which adds a condition that
  * is to be added to relational query join condition.
  *
- * @author Qiang Xue <qiang.xue@gmail.com>
- * @author Carsten Brandt <mail@cebe.cc>
+ * @author boehsermoe <boehsermoe@me.com>
  * @since 2.0
  */
-class ActiveQuery extends Query implements ActiveQueryInterface
+class ActiveQuery extends \yii\db\ActiveQuery
 {
-	use ActiveQueryTrait;
-	use ActiveRelationTrait;
-
 	const DIRECTION_IN = 'IN';
 	const DIRECTION_OUT = 'OUT';
 
 	/**
-	 * @var string the SQL statement to be executed for retrieving AR records.
-	 * This is set by [[ActiveRecord::findBySql()]].
+	 * @var string the Cypher statement to be executed for retrieving AR records.
+	 * This is set by [[ActiveRecord::findByCypher()]].
 	 */
 	public $node;
 	/**
