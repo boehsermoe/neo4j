@@ -89,6 +89,11 @@ class ActiveQuery extends Query implements ActiveQueryInterface
 	 * @see onCondition()
 	 */
 	public $on;
+    /**
+     * @var string the Cypher statement to be executed for retrieving AR records.
+     * This is set by [[ActiveRecord::findByCypher()]].
+     */
+    public $cypher;
 	/**
 	 * @var array a list of relations that this query should be joined with
 	 */

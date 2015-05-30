@@ -256,6 +256,31 @@ class ActiveRecord extends BaseActiveRecord
         }
     }
 
+    /**
+     * Creates an [[ActiveQuery]] instance with a given SQL statement.
+     *
+     * Note that because the SQL statement is already specified, calling additional
+     * query modification methods (such as `where()`, `order()`) on the created [[ActiveQuery]]
+     * instance will have no effect. However, calling `with()`, `asArray()` or `indexBy()` is
+     * still fine.
+     *
+     * Below is an example:
+     *
+     * ~~~
+     * $customers = Customer::findByCypher('SELECT * FROM customer')->all();
+     * ~~~
+     *
+     * @param string $cypher the SQL statement to be executed
+     * @param array $params parameters to be bound to the SQL statement during execution.
+     * @return \neo4j\db\ActiveQuery the newly created [[ActiveQuery]] instance
+     */
+    public static function findByCypher($cypher, $params = [])
+    {
+        $query = static::find();
+        $query->cypher = $cypher;
+
+        return $query->params($params);
+    }
 
     /**
      * @return string the label name

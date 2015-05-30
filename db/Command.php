@@ -598,13 +598,21 @@ class Command extends \yii\base\Component
 	public function update($label, $properties, $id, $condition = [], $params = [])
 	{
 		$node = $this->db->client->getNode($id);
-		$node->setProperties($properties);
 
-		return $this->setLabel($label)->setContainer($node)->bindValues($params);
+        if ($node === null)
+        {
+            return null;
+        }
+        else
+        {
+            $node->setProperties($properties);
 
-		$sql = $this->db->getQueryBuilder()->update($table, $columns, $condition, $params);
+            return $this->setLabel($label)->setContainer($node)->bindValues($params);
 
-		return $this->setSql($sql)->bindValues($params);
+            $sql = $this->db->getQueryBuilder()->update($table, $columns, $condition, $params);
+
+            return $this->setSql($sql)->bindValues($params);
+        }
 	}
 
 	/**
