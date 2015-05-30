@@ -24,11 +24,17 @@ class ExecuteCypherQuery extends Command
 	 * Set the query to execute
 	 *
 	 * @param Client $client
-	 * @param Query $query
+	 * @param Query|string $query
 	 */
-	public function __construct(Client $client, Query $query)
+	public function __construct(Client $client, $query)
 	{
 		parent::__construct($client);
+
+        if (is_string($query))
+        {
+            $query = new Query($client, $query);
+        }
+
 		$this->query = $query;
 	}
 
