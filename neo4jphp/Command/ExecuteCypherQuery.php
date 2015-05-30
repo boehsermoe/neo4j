@@ -46,7 +46,7 @@ class ExecuteCypherQuery extends Command
 	protected function getData()
 	{
 		$query = $this->query->getQuery();
-        $query = addcslashes($query, '+-&&||!(){}[]^"~*?:\\');
+        #$query = addcslashes($query, '+-&&||!(){}[]^"~*?:\\');
 
         $data['query'] = $query;
 		$params = $this->query->getParameters();
