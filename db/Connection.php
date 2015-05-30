@@ -113,6 +113,8 @@ class Connection extends Component
 	 */
 	const EVENT_AFTER_OPEN = 'afterOpen';
 
+    public $driverName = 'neo4j';
+
 	public $host = 'localhost';
 	public $port = 7474;
 

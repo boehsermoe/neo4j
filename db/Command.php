@@ -217,11 +217,11 @@ class Command extends \yii\base\Component
 
         return;
 		if ($this->pdoStatement == null) {
-			$sql = $this->getSql();
+			$queryString = $this->getSql();
 			try {
-				$this->pdoStatement = $this->db->pdo->prepare($sql);
+				$this->pdoStatement = $this->db->pdo->prepare($queryString);
 			} catch (\Exception $e) {
-				$message = $e->getMessage() . "\nFailed to prepare SQL: $sql";
+				$message = $e->getMessage() . "\nFailed to prepare SQL: $queryString";
 				$errorInfo = $e instanceof \PDOException ? $e->errorInfo : null;
 				throw new Exception($message, $errorInfo, (int) $e->getCode(), $e);
 			}
@@ -570,9 +570,9 @@ class Command extends \yii\base\Component
 	 */
 	public function batchInsert($table, $columns, $rows)
 	{
-		$sql = $this->db->getQueryBuilder()->batchInsert($table, $columns, $rows);
+		$queryString = $this->db->getQueryBuilder()->batchInsert($table, $columns, $rows);
 
-		return $this->setSql($sql);
+		return $this->setQuery($queryString);
 	}
 
 	/**
@@ -609,9 +609,9 @@ class Command extends \yii\base\Component
 
             return $this->setLabel($label)->setContainer($node)->bindValues($params);
 
-            $sql = $this->db->getQueryBuilder()->update($table, $columns, $condition, $params);
+            $queryString = $this->db->getQueryBuilder()->update($table, $columns, $condition, $params);
 
-            return $this->setSql($sql)->bindValues($params);
+            return $this->setQuery($queryString)->bindValues($params);
         }
 	}
 
@@ -660,9 +660,9 @@ class Command extends \yii\base\Component
 	 */
 	public function createTable($table, $columns, $options = null)
 	{
-		$sql = $this->db->getQueryBuilder()->createTable($table, $columns, $options);
+		$queryString = $this->db->getQueryBuilder()->createTable($table, $columns, $options);
 
-		return $this->setSql($sql);
+		return $this->setQuery($queryString);
 	}
 
 	/**
@@ -673,9 +673,9 @@ class Command extends \yii\base\Component
 	 */
 	public function renameTable($table, $newName)
 	{
-		$sql = $this->db->getQueryBuilder()->renameTable($table, $newName);
+		$queryString = $this->db->getQueryBuilder()->renameTable($table, $newName);
 
-		return $this->setSql($sql);
+		return $this->setQuery($queryString);
 	}
 
 	/**
@@ -685,9 +685,9 @@ class Command extends \yii\base\Component
 	 */
 	public function dropTable($table)
 	{
-		$sql = $this->db->getQueryBuilder()->dropTable($table);
+		$queryString = $this->db->getQueryBuilder()->dropTable($table);
 
-		return $this->setSql($sql);
+		return $this->setQuery($queryString);
 	}
 
 	/**
@@ -697,9 +697,9 @@ class Command extends \yii\base\Component
 	 */
 	public function truncateTable($table)
 	{
-		$sql = $this->db->getQueryBuilder()->truncateTable($table);
+		$queryString = $this->db->getQueryBuilder()->truncateTable($table);
 
-		return $this->setSql($sql);
+		return $this->setQuery($queryString);
 	}
 
 	/**
@@ -713,9 +713,9 @@ class Command extends \yii\base\Component
 	 */
 	public function addColumn($table, $column, $type)
 	{
-		$sql = $this->db->getQueryBuilder()->addColumn($table, $column, $type);
+		$queryString = $this->db->getQueryBuilder()->addColumn($table, $column, $type);
 
-		return $this->setSql($sql);
+		return $this->setQuery($queryString);
 	}
 
 	/**
@@ -726,9 +726,9 @@ class Command extends \yii\base\Component
 	 */
 	public function dropColumn($table, $column)
 	{
-		$sql = $this->db->getQueryBuilder()->dropColumn($table, $column);
+		$queryString = $this->db->getQueryBuilder()->dropColumn($table, $column);
 
-		return $this->setSql($sql);
+		return $this->setQuery($queryString);
 	}
 
 	/**
@@ -740,9 +740,9 @@ class Command extends \yii\base\Component
 	 */
 	public function renameColumn($table, $oldName, $newName)
 	{
-		$sql = $this->db->getQueryBuilder()->renameColumn($table, $oldName, $newName);
+		$queryString = $this->db->getQueryBuilder()->renameColumn($table, $oldName, $newName);
 
-		return $this->setSql($sql);
+		return $this->setQuery($queryString);
 	}
 
 	/**
@@ -756,9 +756,9 @@ class Command extends \yii\base\Component
 	 */
 	public function alterColumn($table, $column, $type)
 	{
-		$sql = $this->db->getQueryBuilder()->alterColumn($table, $column, $type);
+        $queryString = $this->db->getQueryBuilder()->alterColumn($table, $column, $type);
 
-		return $this->setSql($sql);
+		return $this->setQuery($queryString);
 	}
 
 	/**
@@ -771,9 +771,9 @@ class Command extends \yii\base\Component
 	 */
 	public function addPrimaryKey($name, $table, $columns)
 	{
-		$sql = $this->db->getQueryBuilder()->addPrimaryKey($name, $table, $columns);
+        $queryString = $this->db->getQueryBuilder()->addPrimaryKey($name, $table, $columns);
 
-		return $this->setSql($sql);
+		return $this->setQuery($queryString);
 	}
 
 	/**
@@ -784,9 +784,9 @@ class Command extends \yii\base\Component
 	 */
 	public function dropPrimaryKey($name, $table)
 	{
-		$sql = $this->db->getQueryBuilder()->dropPrimaryKey($name, $table);
+        $queryString = $this->db->getQueryBuilder()->dropPrimaryKey($name, $table);
 
-		return $this->setSql($sql);
+		return $this->setQuery($queryString);
 	}
 
 	/**
@@ -803,9 +803,9 @@ class Command extends \yii\base\Component
 	 */
 	public function addForeignKey($name, $table, $columns, $refTable, $refColumns, $delete = null, $update = null)
 	{
-		$sql = $this->db->getQueryBuilder()->addForeignKey($name, $table, $columns, $refTable, $refColumns, $delete, $update);
+        $queryString = $this->db->getQueryBuilder()->addForeignKey($name, $table, $columns, $refTable, $refColumns, $delete, $update);
 
-		return $this->setSql($sql);
+		return $this->setQuery($queryString);
 	}
 
 	/**
@@ -816,9 +816,9 @@ class Command extends \yii\base\Component
 	 */
 	public function dropForeignKey($name, $table)
 	{
-		$sql = $this->db->getQueryBuilder()->dropForeignKey($name, $table);
+        $queryString = $this->db->getQueryBuilder()->dropForeignKey($name, $table);
 
-		return $this->setSql($sql);
+		return $this->setQuery($queryString);
 	}
 
 	/**
@@ -832,9 +832,9 @@ class Command extends \yii\base\Component
 	 */
 	public function createIndex($name, $table, $columns, $unique = false)
 	{
-		$sql = $this->db->getQueryBuilder()->createIndex($name, $table, $columns, $unique);
+		$queryString = $this->db->getQueryBuilder()->createIndex($name, $table, $columns, $unique);
 
-		return $this->setSql($sql);
+		return $this->setQuery($queryString);
 	}
 
 	/**
@@ -845,9 +845,9 @@ class Command extends \yii\base\Component
 	 */
 	public function dropIndex($name, $table)
 	{
-		$sql = $this->db->getQueryBuilder()->dropIndex($name, $table);
+		$queryString = $this->db->getQueryBuilder()->dropIndex($name, $table);
 
-		return $this->setSql($sql);
+		return $this->setQuery($queryString);
 	}
 
 	/**
@@ -862,9 +862,9 @@ class Command extends \yii\base\Component
 	 */
 	public function resetSequence($table, $value = null)
 	{
-		$sql = $this->db->getQueryBuilder()->resetSequence($table, $value);
+		$queryString = $this->db->getQueryBuilder()->resetSequence($table, $value);
 
-		return $this->setSql($sql);
+		return $this->setQuery($queryString);
 	}
 
 	/**
@@ -878,8 +878,8 @@ class Command extends \yii\base\Component
 	 */
 	public function checkIntegrity($check = true, $schema = '', $table = '')
 	{
-		$sql = $this->db->getQueryBuilder()->checkIntegrity($check, $schema, $table);
+		$queryString = $this->db->getQueryBuilder()->checkIntegrity($check, $schema, $table);
 
-		return $this->setSql($sql);
+		return $this->setQuery($queryString);
 	}
 }
