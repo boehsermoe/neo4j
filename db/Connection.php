@@ -12,6 +12,7 @@ use Everyman\Neo4j\Cache;
 use Everyman\Neo4j\Client;
 use Everyman\Neo4j\Exception;
 use Everyman\Neo4j\Node;
+use Everyman\Neo4j\PropertyContainer;
 use Everyman\Neo4j\Query;
 use Everyman\Neo4j\Transaction;
 use Everyman\Neo4j\Transport\Curl;
@@ -239,15 +240,22 @@ class Connection extends Component
 		$this->trigger(self::EVENT_AFTER_OPEN);
 	}
 
-	/**
-	 * Creates a command for execution.
-	 * @param Node $container the Container to be find
-	 * @param string|Query $query the Query statement to be executed
-	 * @param array $params the parameters to be bound to the SQL statement
-	 * @return Command the DB command
-	 */
-	public function createCommand($container = null, $query = null, $params = [])
+    /**
+     * Creates a command for execution.
+     * @param string|Query $query the Query statement to be executed
+     * @param array $params the parameters to be bound to the SQL statement
+     * @return Command the DB command
+     */
+	public function createCommand($query = null, $params = [])
 	{
+        $container = null;
+
+        if ($query instanceof PropertyContainer)
+        {
+            $container = $query;
+            $query = null;
+        }
+
 		$this->open();
 		$command = new Command([
 			'db' => $this,
