@@ -625,6 +625,11 @@ class QueryBuilder extends \yii\db\QueryBuilder
 			}
 			else
 			{
+                if ($name === 'id')
+                {
+                    $name = "id($this->identifier)";
+                }
+
 				$orders[] = $name . ($direction === SORT_DESC ? ' DESC' : '');
 			}
 		}
