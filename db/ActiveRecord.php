@@ -58,7 +58,7 @@ class ActiveRecord extends BaseActiveRecord
      * @param string|array $condition the conditions that will be put in the WHERE part of the UPDATE SQL.
      * Please refer to [[Query::where()]] on how to specify this parameter.
      * @param array $params the parameters (name => value) to be bound to the query.
-     * @return integer the number of rows updated
+     * @return bool
      */
     public static function updateAll($attributes, $condition = '', $params = [])
     {
@@ -82,7 +82,7 @@ class ActiveRecord extends BaseActiveRecord
      * Please refer to [[Query::where()]] on how to specify this parameter.
      * @param array $params the parameters (name => value) to be bound to the query.
      * Do not name the parameters as `:bp0`, `:bp1`, etc., because they are used internally by this method.
-     * @return integer the number of rows updated
+     * @return bool
      */
     public static function updateAllCounters($counters, $condition = '', $params = [])
     {
@@ -110,7 +110,7 @@ class ActiveRecord extends BaseActiveRecord
      * @param string|array $condition the conditions that will be put in the WHERE part of the DELETE SQL.
      * Please refer to [[Query::where()]] on how to specify this parameter.
      * @param array $params the parameters (name => value) to be bound to the query.
-     * @return integer the number of rows deleted
+     * @return bool
      *
      * @throws \Everyman\Neo4j\Exception
      */

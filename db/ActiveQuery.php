@@ -115,7 +115,7 @@ class ActiveQuery extends \yii\db\ActiveQuery
             $this->from = [$tableName];
         }
 
-        return;
+        return $this;
         // Todo
 
         if (empty($this->select) && !empty($this->join)) {
@@ -328,7 +328,7 @@ class ActiveQuery extends \yii\db\ActiveQuery
 			$params = $this->params;
 		}
 
-		return $db->createCommand($this->node, $query, $params);
+		return $db->createCommand($query, $params);
 	}
 
 	/**
