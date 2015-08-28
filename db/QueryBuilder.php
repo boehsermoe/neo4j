@@ -260,58 +260,107 @@ class QueryBuilder extends \yii\db\QueryBuilder
         return $vars;
 	}
 
-	public function buildHashCondition($condition, &$params)
-	{
+    public function buildHashCondition($condition, &$params)
+    {
         $parts = [];
-		foreach ($condition as $column => $value)
-		{
-			if (is_array($value))
-			{ // IN condition
-				$parts[] = $this->buildInCondition('IN', [$column, $value], $params);
-			}
-			else
-			{
+        foreach ($condition as $column => $value)
+        {
+            if (is_array($value))
+            { // IN condition
+                $parts[] = $this->buildInCondition('IN', [$column, $value], $params);
+            }
+            else
+            {
                 if ($column === 'id')
                 {
-                    $column = "id($this->identifier)";
                     $value = intval($value);
                 }
-				else
-                {
-                    if (strpos($column, '(') === false)
-                    {
-                        $column = $this->db->quoteColumnName($column);
-                    }
+                $column = $this->prepareColumn($column);
 
-                    if ($this->identifier)
+                if ($value === null)
+                {
+                    $parts[] = "$column IS NULL";
+                }
+                elseif ($value instanceof Expression)
+                {
+                    $parts[] = "$column=" . $value->expression;
+                    foreach ($value->params as $n => $v)
                     {
-                        $column = $this->identifier .'.'. $column;
+                        $params[$n] = $v;
                     }
                 }
-
-				if ($value === null)
-				{
-					$parts[] = "$column IS NULL";
-				}
-				elseif ($value instanceof Expression)
-				{
-					$parts[] = "$column=" . $value->expression;
-					foreach ($value->params as $n => $v)
-					{
-						$params[$n] = $v;
-					}
-				}
-				else
-				{
-					$phName = self::PARAM_PREFIX . count($params);
-					$parts[] = "$column=$phName";
-					$params[$phName] = $value;
-				}
-			}
-		}
+                else
+                {
+                    $phName = self::PARAM_PREFIX . count($params);
+                    $parts[] = "$column=$phName";
+                    $params[$phName] = $value;
+                }
+            }
+        }
 
         return count($parts) === 1 ? $parts[0] : '(' . implode(') AND (', $parts) . ')';
-	}
+    }
+
+    /**
+     * Creates an SQL expressions like `"column" operator value`.
+     * @param string $operator the operator to use. Anything could be used e.g. `>`, `<=`, etc.
+     * @param array $operands contains two column names.
+     * @param array $params the binding parameters to be populated
+     * @return string the generated SQL expression
+     * @throws InvalidParamException if wrong number of operands have been given.
+     */
+    public function buildSimpleCondition($operator, $operands, &$params)
+    {
+        if (count($operands) !== 2) {
+            throw new InvalidParamException("Operator '$operator' requires two operands.");
+        }
+
+        list($column, $value) = $operands;
+
+        if ($column === 'id')
+        {
+            $value = intval($value);
+        }
+        $column = $this->prepareColumn($column);
+
+        if ($value === null) {
+            return "$column $operator NULL";
+        } elseif ($value instanceof Expression) {
+            foreach ($value->params as $n => $v) {
+                $params[$n] = $v;
+            }
+            return "$column $operator {$value->expression}";
+        } elseif ($value instanceof Query) {
+            list($sql, $params) = $this->build($value, $params);
+            return "$column $operator ($sql)";
+        } else {
+            $phName = self::PARAM_PREFIX . count($params);
+            $params[$phName] = $value;
+            return "$column $operator $phName";
+        }
+    }
+
+    protected function prepareColumn($column)
+    {
+        if ($column === 'id')
+        {
+            $column = "id($this->identifier)";
+        }
+        else
+        {
+            if (strpos($column, '(') === false)
+            {
+                $column = $this->db->quoteColumnName($column);
+            }
+
+            if ($this->identifier)
+            {
+                $column = $this->identifier .'.'. $column;
+            }
+        }
+
+        return $column;
+    }
 
     /**
      * Creates an SQL expressions with the `IN` operator.
