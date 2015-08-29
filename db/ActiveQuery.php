@@ -453,9 +453,9 @@ class ActiveQuery extends \yii\db\ActiveQuery
 	 * in the format of `relationName => joinType` to specify different join types for different relations.
 	 * @return static the query object itself
 	 */
-	public function joinWith($with, $direction, $eagerLoading = true)
+	public function joinWith($with, $eagerLoading = true)
 	{
-		$this->joinWith[] = [(array) $with, $eagerLoading, $direction];
+		$this->joinWith[] = [(array) $with, $eagerLoading];
 
 		return $this;
 	}
@@ -466,8 +466,8 @@ class ActiveQuery extends \yii\db\ActiveQuery
 		$this->join = [];
 
 		foreach ($this->joinWith as $config) {
-			list ($with, $eagerLoading, $direction) = $config;
-			$this->joinWithRelations(new $this->modelClass, $with, $direction);
+			list ($with, $eagerLoading) = $config;
+			$this->joinWithRelations(new $this->modelClass, $with);
 
 			if (is_array($eagerLoading)) {
 				foreach ($with as $name => $callback) {
@@ -512,16 +512,15 @@ class ActiveQuery extends \yii\db\ActiveQuery
 	 */
 	public function innerJoinWith($with, $eagerLoading = true)
 	{
-		return $this->joinWith($with, $eagerLoading, 'INNER JOIN');
+		return $this->joinWith($with, $eagerLoading);
 	}
 
 	/**
 	 * Modifies the current query by adding join fragments based on the given relations.
 	 * @param ActiveRecord $model the primary model
 	 * @param array $with the relations to be joined
-	 * @param string $direction
 	 */
-	private function joinWithRelations($model, $with, $direction)
+	private function joinWithRelations($model, $with)
 	{
 		$relations = [];
 
