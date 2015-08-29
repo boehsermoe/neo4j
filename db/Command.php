@@ -443,11 +443,23 @@ class Command extends \yii\base\Component
 	public function queryScalar()
 	{
 		$result = $this->queryInternal(0);
-		if (is_resource($result) && get_resource_type($result) === 'stream') {
+		if (is_resource($result) && get_resource_type($result) === 'stream')
+        {
 			return stream_get_contents($result);
-		} else {
-			return $result;
 		}
+        elseif (is_array($result))
+        {
+            if (empty($result))
+            {
+                return false;
+            }
+
+            return $result[0];
+		}
+        else
+        {
+            return $result;
+        }
 	}
 
 	/**
