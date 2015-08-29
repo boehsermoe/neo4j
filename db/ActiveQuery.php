@@ -453,9 +453,9 @@ class ActiveQuery extends \yii\db\ActiveQuery
 	 * in the format of `relationName => joinType` to specify different join types for different relations.
 	 * @return static the query object itself
 	 */
-	public function joinWith($with, $label, $direction, $eagerLoading = true)
+	public function joinWith($with, $direction, $eagerLoading = true)
 	{
-		$this->joinWith[] = [(array) $with, $eagerLoading, $label, $direction];
+		$this->joinWith[] = [(array) $with, $eagerLoading, $direction];
 
 		return $this;
 	}
@@ -466,8 +466,8 @@ class ActiveQuery extends \yii\db\ActiveQuery
 		$this->join = [];
 
 		foreach ($this->joinWith as $config) {
-			list ($with, $eagerLoading, $label, $direction) = $config;
-			$this->joinWithRelations(new $this->modelClass, $with, $label, $direction);
+			list ($with, $eagerLoading, $direction) = $config;
+			$this->joinWithRelations(new $this->modelClass, $with, $direction);
 
 			if (is_array($eagerLoading)) {
 				foreach ($with as $name => $callback) {
@@ -519,10 +519,9 @@ class ActiveQuery extends \yii\db\ActiveQuery
 	 * Modifies the current query by adding join fragments based on the given relations.
 	 * @param ActiveRecord $model the primary model
 	 * @param array $with the relations to be joined
-	 * @param string|array $label the join type
 	 * @param string $direction
 	 */
-	private function joinWithRelations($model, $with, $label, $direction)
+	private function joinWithRelations($model, $with, $direction)
 	{
 		$relations = [];
 
@@ -540,8 +539,9 @@ class ActiveQuery extends \yii\db\ActiveQuery
 				$name = substr($name, 0, $pos);
 				$fullName = $prefix === '' ? $name : "$prefix.$name";
 				if (!isset($relations[$fullName])) {
+
 					$relations[$fullName] = $relation = $primaryModel->getRelation($name);
-					$this->joinWithRelation($parent, $relation, $this->getJoinType($label, $fullName));
+					$this->joinWithRelation($parent, $relation);
 				} else {
 					$relation = $relations[$fullName];
 				}
@@ -557,7 +557,7 @@ class ActiveQuery extends \yii\db\ActiveQuery
 				if ($callback !== null) {
 					call_user_func($callback, $relation);
 				}
-				$this->joinWithRelation($parent, $relation, $this->getJoinType($label, $fullName));
+				$this->joinWithRelation($parent, $relation);
 			}
 		}
 	}
@@ -573,7 +573,7 @@ class ActiveQuery extends \yii\db\ActiveQuery
 		if (is_array($joinType) && isset($joinType[$name])) {
 			return $joinType[$name];
 		} else {
-			return is_string($joinType) ? $joinType : 'INNER JOIN';
+			return $joinType;
 		}
 	}
 
@@ -615,20 +615,20 @@ class ActiveQuery extends \yii\db\ActiveQuery
 	 * @param ActiveQuery $child
 	 * @param string $joinType
 	 */
-	private function joinWithRelation($parent, $child, $joinType)
+	private function joinWithRelation($parent, $child)
 	{
 		$via = $child->via;
 		$child->via = null;
 		if ($via instanceof ActiveQuery) {
 			// via table
-			$this->joinWithRelation($parent, $via, $joinType);
-			$this->joinWithRelation($via, $child, $joinType);
+			$this->joinWithRelation($parent, $via, $child->link);
+			$this->joinWithRelation($via, $child, $child->link);
 
 			return;
 		} elseif (is_array($via)) {
 			// via relation
-			$this->joinWithRelation($parent, $via[1], $joinType);
-			$this->joinWithRelation($via[1], $child, $joinType);
+			$this->joinWithRelation($parent, $via[1], $child->link);
+			$this->joinWithRelation($via[1], $child, $child->link);
 
 			return;
 		}
@@ -656,7 +656,7 @@ class ActiveQuery extends \yii\db\ActiveQuery
 		} else {
 			$on = $child->on;
 		}
-		$this->join($joinType, empty($child->from) ? $childTable : $child->from, $on);
+		$this->join($child->link, empty($child->from) ? $childTable : $child->from, $on);
 
 		if (!empty($child->where)) {
 			$this->andWhere($child->where);
