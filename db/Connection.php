@@ -252,7 +252,7 @@ class Connection extends Component
 	{
         $container = null;
 
-        if ($query instanceof PropertyContainer)
+		if ($query instanceof PropertyContainer)
         {
             $container = $query;
             $query = null;

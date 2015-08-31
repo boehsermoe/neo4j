@@ -13,6 +13,7 @@ use neo4j\neo4jphp\Command\ExecuteCypherQuery;
 use Yii;
 use yii\base\NotSupportedException;
 use yii\caching\Cache;
+use yii\db\Expression;
 
 /**
  * Command represents a SQL statement to be executed against a database.
@@ -368,12 +369,27 @@ class Command extends \yii\base\Component
 		}
 		elseif ($this->_container)
 		{
-			$result = $this->_container->save();
+			$result = $this->executeContainer();
+		}
 
-			if ($this->_container instanceof Node && $this->label)
+		return $result;
+	}
+
+	protected function executeContainer()
+	{
+		foreach ($this->_container->getProperties() as $property => $value)
+		{
+			if ($value instanceof Expression)
 			{
-				$this->_container->addLabels([$this->label]);
+				$this->_container->setProperty($property, $value->expression);
 			}
+		}
+
+		$result = $this->_container->save();
+
+		if ($this->_container instanceof Node && $this->label)
+		{
+			$this->_container->addLabels([$this->label]);
 		}
 
 		return $result;
@@ -383,7 +399,7 @@ class Command extends \yii\base\Component
 	 * @return array
 	 * @author bk
 	 */
-	public function executeCypherQuery()
+	protected function executeCypherQuery()
 	{
         $query = new Query($this->db->client, $this->_query, $this->params);
         $command = new ExecuteCypherQuery($this->db->client, $query);
