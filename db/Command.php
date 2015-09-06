@@ -49,6 +49,7 @@ use yii\db\Expression;
  * To build SELECT SQL statements, please use [[QueryBuilder]] instead.
  *
  * @property PropertyContainer $container The SQL statement to be executed.
+ * @property string $rawQuery
  *
  * @author Qiang Xue <qiang.xue@gmail.com>
  * @since 2.0

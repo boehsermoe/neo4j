@@ -269,6 +269,12 @@ class QueryBuilder extends \yii\db\QueryBuilder
             { // IN condition
                 $parts[] = $this->buildInCondition('IN', [$column, $value], $params);
             }
+			elseif ($value instanceof ActiveRecord)
+			{
+				$label = $value->labelName();
+
+                $parts[] = "($this->identifier)--(node(:$label) {id: $value->id })";
+			}
             else
             {
                 if ($column === 'id')
