@@ -2,6 +2,7 @@
 
 namespace neo4j\db;
 
+use neo4j\neo4jphp\Command\ExecuteCypherQuery;
 use yii\base\NotSupportedException;
 use yii\db\Exception;
 use yii\base\InvalidParamException;
@@ -17,14 +18,25 @@ use yii\helpers\Inflector;
  */
 class QueryBuilder extends \yii\db\QueryBuilder
 {
-	/**
-	 * @var Connection the database connection.
-	 */
-	public $db;
+    /**
+     * The prefix for automatically generated query binding parameters.
+     */
+    const PARAM_PREFIX = ':qp';
 
-	/**
-	 * @var array mapping from abstract column types (keys) to physical column types (values).
-	 */
+    /**
+     * @var Connection the database connection.
+     */
+    public $db;
+    /**
+     * @var string the separator between different fragments of a SQL statement.
+     * Defaults to an empty space. This is mainly used by [[build()]] when generating a SQL statement.
+     */
+    public $separator = " ";
+    /**
+     * @var array the abstract column types mapped to physical column types.
+     * This is mainly used to support creating/modifying tables using DB-independent data type specifications.
+     * Child classes should override this property to declare supported type mappings.
+     */
 	public $typeMap = [
 		/*
 		Schema::TYPE_PK => 'int(11) NOT NULL AUTO_INCREMENT PRIMARY KEY',
@@ -87,34 +99,47 @@ class QueryBuilder extends \yii\db\QueryBuilder
 	}
 
     /**
-     * Builds a SQL statement for adding a foreign key constraint to an existing table.
-     * The method will properly quote the table and column names.
-     * @param string $name the name of the foreign key constraint.
-     * @param string $table the table that the foreign key constraint will be added to.
-     * @param string|array $columns the name of the column to that the constraint will be added on.
-     * If there are multiple columns, separate them with commas or use an array to represent them.
-     * @param string $refTable the table that the foreign key references to.
-     * @param string|array $refColumns the name of the column that the foreign key references to.
-     * If there are multiple columns, separate them with commas or use an array to represent them.
-     * @param string $delete the ON DELETE option. Most DBMS support these options: RESTRICT, CASCADE, NO ACTION, SET DEFAULT, SET NULL
-     * @param string $update the ON UPDATE option. Most DBMS support these options: RESTRICT, CASCADE, NO ACTION, SET DEFAULT, SET NULL
-     * @return string the SQL statement for adding a foreign key constraint to an existing table.
+     * Builds a SQL statement for creating a new index.
+     * @param string $name the name of the index. The name will be properly quoted by the method.
+     * @param string $table the table that the new index will be created for. The table name will be properly quoted by the method.
+     * @param string|array $columns the column(s) that should be included in the index. If there are multiple columns,
+     * separate them with commas or use an array to represent them. Each column name will be properly quoted
+     * by the method, unless a parenthesis is found in the name.
+     * @param boolean $unique whether to add UNIQUE constraint on the created index.
+     * @return string the SQL statement for creating a new index.
      */
-    public function addForeignKey($name, $table, $columns, $refTable, $refColumns, $delete = null, $update = null)
+    public function createIndex($label, $property, $unique = false)
     {
-        $sql = 'ALTER TABLE ' . $this->db->quoteTableName($table)
-            . ' ADD CONSTRAINT ' . $this->db->quoteColumnName($name)
-            . ' FOREIGN KEY (' . $this->buildColumns($columns) . ')'
-            . ' REFERENCES ' . $this->db->quoteTableName($refTable)
-            . ' (' . $this->buildColumns($refColumns) . ')';
-        if ($delete !== null) {
-            $sql .= ' ON DELETE ' . $delete;
+        if ($unique)
+        {
+            return $this->createUniqueNodeConstraint($label, $property);
         }
-        if ($update !== null) {
-            $sql .= ' ON UPDATE ' . $update;
+        else
+        {
+            return "CREATE INDEX ON :$label($property)";
         }
+    }
 
-        return $sql;
+    /**
+     * Builds a SQL statement for dropping an index.
+     * @param string $name the name of the index to be dropped. The name will be properly quoted by the method.
+     * @param string $table the table whose index is to be dropped. The name will be properly quoted by the method.
+     * @return string the SQL statement for dropping an index.
+     */
+    public function dropIndex($label, $property)
+    {
+        return "DROP INDEX ON :$label($property)";
+    }
+
+    /**
+     * To create a constraint that makes sure that your database will never contain more
+     * than one node with a specific label and one property value, use the IS UNIQUE syntax.
+     *
+     * @return string
+     */
+    public function createUniqueNodeConstraint($label, $property)
+    {
+        return "CREATE CONSTRAINT ON (n:$label) ASSERT n.$property IS UNIQUE";
     }
 
 	/**
@@ -123,10 +148,9 @@ class QueryBuilder extends \yii\db\QueryBuilder
 	 * @param string $table the table whose foreign is to be dropped. The name will be properly quoted by the method.
 	 * @return string the SQL statement for dropping a foreign key constraint.
 	 */
-	public function dropForeignKey($name, $table)
+	public function dropUniqueNodeConstraint($label, $property)
 	{
-		return 'ALTER TABLE ' . $this->db->quoteTableName($table)
-		. ' DROP FOREIGN KEY ' . $this->db->quoteColumnName($name);
+        return "DROP CONSTRAINT ON (n:$label) ASSERT n.$property IS UNIQUE";
 	}
 
     /**

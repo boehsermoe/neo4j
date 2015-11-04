@@ -103,16 +103,20 @@ class ExecuteCypherQuery extends Command
 		/** @var $row Row */
 		foreach ($this->resultSet as $row)
 		{
-			foreach ($row as $container)
+			foreach ($row as $value)
 			{
-                if (is_array($container))
+                if (is_array($value))
                 {
-                    $result[] = $container;
+                    $result[] = $value;
                 }
-                elseif ($container instanceof PropertyContainer)
+                elseif ($value instanceof PropertyContainer)
                 {
-				    $result[] = array_merge(['id' => $container->getId()], $container->getProperties());
+				    $result[] = array_merge(['id' => $value->getId()], $value->getProperties());
                 }
+				else
+				{
+					$result[] = $value;
+				}
 			}
 		}
 

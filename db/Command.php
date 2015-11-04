@@ -670,31 +670,6 @@ class Command extends \yii\base\Component
 	}
 
 	/**
-	 * Creates a SQL command for creating a new DB table.
-	 *
-	 * The columns in the new table should be specified as name-definition pairs (e.g. 'name' => 'string'),
-	 * where name stands for a column name which will be properly quoted by the method, and definition
-	 * stands for the column type which can contain an abstract DB type.
-	 * The method [[QueryBuilder::getColumnType()]] will be called
-	 * to convert the abstract column types to physical ones. For example, `string` will be converted
-	 * as `varchar(255)`, and `string not null` becomes `varchar(255) not null`.
-	 *
-	 * If a column is specified with definition only (e.g. 'PRIMARY KEY (name, type)'), it will be directly
-	 * inserted into the generated SQL.
-	 *
-	 * @param string $table the name of the table to be created. The name will be properly quoted by the method.
-	 * @param array $columns the columns (name => definition) in the new table.
-	 * @param string $options additional SQL fragment that will be appended to the generated SQL.
-	 * @return Command the command object itself
-	 */
-	public function createTable($table, $columns, $options = null)
-	{
-		$queryString = $this->db->getQueryBuilder()->createTable($table, $columns, $options);
-
-		return $this->setQuery($queryString);
-	}
-
-	/**
 	 * Creates a SQL command for renaming a DB table.
 	 * @param string $table the table to be renamed. The name will be properly quoted by the method.
 	 * @param string $newName the new table name. The name will be properly quoted by the method.
@@ -859,9 +834,9 @@ class Command extends \yii\base\Component
 	 * @param boolean $unique whether to add UNIQUE constraint on the created index.
 	 * @return Command the command object itself
 	 */
-	public function createIndex($name, $table, $columns, $unique = false)
+	public function createIndex($label, $property, $unique)
 	{
-		$queryString = $this->db->getQueryBuilder()->createIndex($name, $table, $columns, $unique);
+		$queryString = $this->db->getQueryBuilder()->createIndex($label, $property, $unique);
 
 		return $this->setQuery($queryString);
 	}
@@ -872,9 +847,38 @@ class Command extends \yii\base\Component
 	 * @param string $table the table whose index is to be dropped. The name will be properly quoted by the method.
 	 * @return Command the command object itself
 	 */
-	public function dropIndex($name, $table)
+	public function dropIndex($label, $property)
 	{
-		$queryString = $this->db->getQueryBuilder()->dropIndex($name, $table);
+		$queryString = $this->db->getQueryBuilder()->dropIndex($label, $property);
+
+		return $this->setQuery($queryString);
+	}
+
+	/**
+	 * Creates a SQL command for creating a new index.
+	 * @param string $name the name of the index. The name will be properly quoted by the method.
+	 * @param string $table the table that the new index will be created for. The table name will be properly quoted by the method.
+	 * @param string|array $columns the column(s) that should be included in the index. If there are multiple columns, please separate them
+	 * by commas. The column names will be properly quoted by the method.
+	 * @param boolean $unique whether to add UNIQUE constraint on the created index.
+	 * @return Command the command object itself
+	 */
+	public function createUniqueNodeConstraint($label, $property)
+	{
+		$queryString = $this->db->getQueryBuilder()->createUniqueNodeConstraint($label, $property);
+
+		return $this->setQuery($queryString);
+	}
+
+	/**
+	 * Creates a SQL command for dropping an index.
+	 * @param string $name the name of the index to be dropped. The name will be properly quoted by the method.
+	 * @param string $table the table whose index is to be dropped. The name will be properly quoted by the method.
+	 * @return Command the command object itself
+	 */
+	public function dropUniqueNodeConstraint($label, $property)
+	{
+		$queryString = $this->db->getQueryBuilder()->dropIndex($label, $property);
 
 		return $this->setQuery($queryString);
 	}
