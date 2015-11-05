@@ -175,14 +175,16 @@ class Command extends \yii\base\Component
 		} else {
 			$params = [];
 			foreach ($this->params as $name => $value) {
+				$name = "{{$name}}";
 				if (is_string($value)) {
-					$params[$name] = $value;
+					$params[$name] = "'$value'";
 				} elseif ($value === null) {
 					$params[$name] = 'NULL';
 				} else {
 					$params[$name] = $value;
 				}
 			}
+
 			if (isset($params[1])) {
 				$query = '';
 				foreach (explode('?', $this->_query) as $i => $part) {

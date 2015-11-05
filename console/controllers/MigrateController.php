@@ -125,12 +125,13 @@ class MigrateController extends BaseMigrateController
 			$this->createMigrationHistoryTable();
 		}
 		$query = new Query;
-		$rows = $query->select(['n.version', 'n.apply_time'])
+		$rows = $query
 			->from($this->migrationLabel)
 			->orderBy('n.apply_time DESC, n.version DESC')
 			->limit($limit)
 			->createCommand($this->db)
 			->queryAll();
+
 		$history = ArrayHelper::map($rows, 'version', 'apply_time');
 		unset($history[self::BASE_MIGRATION]);
 

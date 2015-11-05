@@ -2,6 +2,7 @@
 
 namespace neo4j\db;
 
+use common\exceptions\NotImplementedException;
 use neo4j\neo4jphp\Command\ExecuteCypherQuery;
 use yii\base\NotSupportedException;
 use yii\db\Exception;
@@ -185,6 +186,37 @@ class QueryBuilder extends \yii\db\QueryBuilder
 	{
 		return 'ALTER TABLE ' . $this->db->quoteTableName($table) . ' DROP PRIMARY KEY';
 	}
+
+
+    /**
+     * Builds a SQL statement for adding a foreign key constraint to an existing table.
+     * The method will properly quote the table and column names.
+     * @param string $name the name of the foreign key constraint.
+     * @param string $table the table that the foreign key constraint will be added to.
+     * @param string|array $columns the name of the column to that the constraint will be added on.
+     * If there are multiple columns, separate them with commas or use an array to represent them.
+     * @param string $refTable the table that the foreign key references to.
+     * @param string|array $refColumns the name of the column that the foreign key references to.
+     * If there are multiple columns, separate them with commas or use an array to represent them.
+     * @param string $delete the ON DELETE option. Most DBMS support these options: RESTRICT, CASCADE, NO ACTION, SET DEFAULT, SET NULL
+     * @param string $update the ON UPDATE option. Most DBMS support these options: RESTRICT, CASCADE, NO ACTION, SET DEFAULT, SET NULL
+     * @return string the SQL statement for adding a foreign key constraint to an existing table.
+     */
+    public function addForeignKey($label )
+    {
+        throw new NotImplementedException();
+    }
+
+    /**
+     * Builds a SQL statement for dropping a foreign key constraint.
+     * @param string $name the name of the foreign key constraint to be dropped. The name will be properly quoted by the method.
+     * @param string $table the table whose foreign is to be dropped. The name will be properly quoted by the method.
+     * @return string the SQL statement for dropping a foreign key constraint.
+     */
+    public function dropForeignKey($name, $table)
+    {
+        throw new NotImplementedException();
+    }
 
 	/**
 	 * Creates a SQL statement for resetting the sequence value of a table's primary key.
