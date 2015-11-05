@@ -327,7 +327,6 @@ class ActiveQuery extends \yii\db\ActiveQuery
 		} else {
 			$params = $this->params;
 		}
-
 		return $db->createCommand($query, $params);
 	}
 
@@ -635,6 +634,7 @@ class ActiveQuery extends \yii\db\ActiveQuery
 		list ($parentTable, $parentAlias) = $this->getQueryTableName($parent);
 		list ($childTable, $childAlias) = $this->getQueryTableName($child);
 
+		/*
 		if (!empty($child->link)) {
 
 			if (strpos($parentAlias, '{{') === false) {
@@ -655,6 +655,7 @@ class ActiveQuery extends \yii\db\ActiveQuery
 		} else {
 			$on = $child->on;
 		}
+		*/
 		$this->join($child->link, empty($child->from) ? $childTable : $child->from, $on);
 
 		if (!empty($child->where)) {
