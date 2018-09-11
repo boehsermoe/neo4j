@@ -465,6 +465,32 @@ class Connection extends Component
 		return $str;
 	}
 
+    /**
+     * Processes a SQL statement by quoting table and column names that are enclosed within double brackets.
+     * Tokens enclosed within double curly brackets are treated as table names, while
+     * tokens enclosed within double square brackets are column names. They will be quoted accordingly.
+     * Also, the percentage character "%" at the beginning or ending of a table name will be replaced
+     * with [[tablePrefix]].
+     * @param string $sql the SQL to be quoted
+     * @return string the quoted SQL
+     */
+    public function quoteSql($sql)
+    {
+        return $sql;
+
+        return preg_replace_callback(
+            '/(\\{\\{(%?[\w\-\. ]+%?)\\}\\}|\\[\\[([\w\-\. ]+)\\]\\])/',
+            function ($matches) {
+                if (isset($matches[3])) {
+                    return $this->quoteColumnName($matches[3]);
+                }
+
+                return str_replace('%', $this->tablePrefix, $this->quoteTableName($matches[2]));
+            },
+            $sql
+        );
+    }
+
 	/**
 	 * Quotes a table name for use in a query.
 	 * If the table name contains schema prefix, the prefix will also be properly quoted.

@@ -232,6 +232,32 @@ class Command extends \yii\base\Component
 		}
 	}
 
+	public function getSql()
+    {
+        return $this->_query;
+    }
+
+    /**
+     * Specifies the SQL statement to be executed. The SQL statement will be quoted using [[Connection::quoteSql()]].
+     * The previous SQL (if any) will be discarded, and [[params]] will be cleared as well. See [[reset()]]
+     * for details.
+     *
+     * @param string $sql the SQL statement to be set.
+     * @return $this this command instance
+     * @see reset()
+     * @see cancel()
+     */
+    public function setSql($query)
+    {
+        if ($query !== $this->_query) {
+            $this->cancel();
+            $this->reset();
+            $this->_query = $this->db->quoteSql($query);
+        }
+
+        return $this;
+    }
+
 	/**
 	 * Cancels the execution of the SQL statement.
 	 * This method mainly sets [[pdoStatement]] to be null.
@@ -240,6 +266,18 @@ class Command extends \yii\base\Component
 	{
 		$this->_query = null;
 	}
+
+    /**
+     * Resets command properties to their initial state.
+     *
+     * @since 2.0.13
+     */
+    protected function reset()
+    {
+        $this->_query = null;
+        $this->params = [];
+        $this->_container = null;
+    }
 
 	/**
 	 * Binds a parameter to the SQL statement to be executed.

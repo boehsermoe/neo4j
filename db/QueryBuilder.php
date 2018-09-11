@@ -202,7 +202,7 @@ class QueryBuilder extends \yii\db\QueryBuilder
      * @param string $update the ON UPDATE option. Most DBMS support these options: RESTRICT, CASCADE, NO ACTION, SET DEFAULT, SET NULL
      * @return string the SQL statement for adding a foreign key constraint to an existing table.
      */
-    public function addForeignKey($label )
+    public function addForeignKey($label)
     {
         throw new NotImplementedException();
     }
@@ -801,4 +801,11 @@ class QueryBuilder extends \yii\db\QueryBuilder
 	{
 		return "OPTIONAL MATCH ($this->identifier)-[$this->relationIdentifier]-()";
 	}
+
+    public function selectExists($rawSql)
+    {
+        return $rawSql . ' LIMIT 1';
+    }
+
+
 }

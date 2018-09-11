@@ -787,4 +787,16 @@ class ActiveQuery extends \yii\db\ActiveQuery
 
 		return $this;
 	}
+
+    public function andWhere($condition, $params = [])
+    {
+        $where = [];
+
+        foreach ($condition as $property => $value) {
+            $where['n.' . $property] = $value;
+        }
+
+        return parent::andWhere($where, $params);
+    }
+
 }
